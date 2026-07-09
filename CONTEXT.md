@@ -339,3 +339,117 @@ consistentes con el modelo de datos definido en Supabase.
 Los formularios AcroForm que use Folio serán los formularios oficiales de la 
 DNRPA escaneados/digitalizados por nosotros — no los de Autoforms.
 Los nombres de campos en esos AcroForms los definimos nosotros al crearlos.
+
+## PDFs de precarga de financieras
+
+FCA envía a los gestores un PDF con todos los datos del contrato 
+precargados. El sistema debe poder extraer esos datos automáticamente.
+
+### Campos que vienen en el PDF de FCA Plan de Ahorro
+- Referencia interna: SOL-XXXXX-XXXXXX
+- Monto en números y en letras (ya generado por FCA)
+- Datos del deudor: nombre, estado civil, profesión, nacionalidad, 
+  edad, domicilio completo
+- Datos del vehículo: marca, tipo, modelo, marca motor, N° motor, 
+  marca chasis, N° chasis, condición (0km/usado), uso (particular/comercial)
+- Datos financieros: cantidad cuotas, importe por cuota, fecha primera 
+  cuota, capital, intereses, tasa mora anual
+- TEA/CFT: en plan de ahorro siempre 0% (no hay interés directo)
+
+### Campos que NO vienen en el PDF (se obtienen de AFIP)
+- DNI del deudor
+- CUIT/CUIL
+- Fecha de nacimiento
+
+### Archivos de referencia
+scripts/referencias/
+  fca_plan_ahorro_ejemplo1.pdf  ← LAVACARA JOSE LUIS
+  fca_plan_ahorro_ejemplo2.pdf  ← CAGIONI ROBERTO PABLO
+  st03_pagina1_datos_reales.pdf ← referencia coordenadas ST-03
+  st03_pagina2_datos_reales.pdf ← referencia coordenadas ST-03
+
+### Arquitectura del extractor (Fase 2)
+POST /api/extract/pdf-financiera
+  → extractorService.ts llama Claude API con el PDF en base64
+  → Claude extrae campos estructurados como JSON
+  → Sistema sugiere valores en la UI
+  → Gestor confirma o corrige antes de guardar
+  → Nunca guarda automáticamente sin validación del gestor
+
+### Patrón de nomenclatura para referencias
+{financiera}_{tipo_prenda}_ejemplo{N}.pdf
+Ejemplos:
+  fca_plan_ahorro_ejemplo1.pdf
+  fca_compania_financiera_ejemplo1.pdf
+  santander_ejemplo1.pdf
+  vw_financial_ejemplo1.pdf
+  
+  ## Roadmap técnico — orden de implementación
+
+### Completado
+- Schema completo en Supabase con RLS
+- Tipos TypeScript (src/types/index.ts y src/types/pdf.ts)
+- Arquitectura de generación PDF (engine + template + service + route)
+- ST-03 generando PDF en Legal (612×1008pt) con coordenadas reales
+
+### En curso
+- Calibración de coordenadas ST-03 contra PDF de referencia Autoforms
+
+### Próximos pasos en orden
+
+**1. Cerrar calibración PDF**
+Verificar que el PDF generado coincida con el de referencia.
+Commit cuando esté correcto.
+
+**2. Auth y middleware**
+- Login con Supabase Auth
+- middleware.ts que proteja todas las rutas excepto /login
+- Página /login simple con email + password
+
+**3. UI de carga de prenda — wizard**
+- Paso 1: búsqueda por CUIT → consulta AFIP (mock por ahora) → precarga datos persona
+- Paso 2: datos del vehículo
+- Paso 3: selección de financiera y tipo de prenda (compania_financiera / plan_ahorro)
+- Paso 4: datos del contrato (cuotas, montos, tasas)
+- Paso 5: revisar y generar PDF
+
+**4. Conectar prendaService a Supabase**
+- Reemplazar datos hardcodeados por queries reales
+- Guardar trámite, prenda, contrato en Supabase
+- RLS activo — cada gestor ve solo sus trámites
+
+**5. Historial de trámites**
+- Pantalla principal con listado de trámites del usuario
+- Estado, fecha, dominio, financiera
+- Botón para reimprimir PDF
+
+**6. Prueba con Mercedes**
+Hito clave — validar el flujo completo con una usuaria real
+antes de seguir construyendo. Su feedback define las siguientes prioridades.
+
+**7. Extractor de PDF de financiera**
+- POST /api/extract/pdf-financiera
+- Usa Claude API (claude-sonnet-4-6) para extraer campos del PDF de FCA
+- Sugiere valores en la UI del wizard — el gestor siempre confirma
+- Archivos de prueba: scripts/referencias/fca_plan_ahorro_ejemplo1.pdf y ejemplo2.pdf
+
+**8. Template de acreedor**
+- Cargar datos fijos de financieras en tabla template_acreedor
+- Texto parametrizado de la leyenda para compañía financiera
+- Plan de ahorro: sin leyenda (viene preimpresa en el papel)
+
+**9. Integración AFIP/ARCA real**
+- Reemplazar mock del paso 1 por API real
+- Lookup por CUIT → nombre, domicilio, actividad, estado civil
+
+**10. ST-02 y Formulario 03**
+- Mismo patrón que ST-03: template + coordenadas reales
+- Se generan automáticamente junto con la prenda
+
+### Después de Mercedes (definir según feedback)
+- Gestión de impresoras con offset X/Y por usuario
+- Editor visual de ajuste fino de coordenadas
+- Extractor OCR foto DNI (Fase 3)
+- Extractor foto título del vehículo (Fase 3)
+- Agente IA para incorporar formularios de financieras nuevas (Fase 4)
+- App nativa iOS/Android (Fase 4)

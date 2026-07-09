@@ -8,6 +8,8 @@ export interface CampoPDF {
   y: number
   size?: number
   font?: string
+  /** Página del PDF donde se dibuja (1-indexado). Por defecto 1. */
+  pagina?: number
 }
 
 // ============================================
@@ -20,10 +22,28 @@ export interface PersonaParaImprimir {
   nombreCompleto: string
   cuit?: string
   dni?: string
-  domicilio?: string
+  tipoDocumento?: 'DNI' | 'LE' | 'LC'
+  autoridadExpedidora?: string
+  calle?: string
+  numero?: string
+  piso?: string
+  cp?: string
   localidad?: string
+  partido?: string
   provincia?: string
+  telefono?: string
+  email?: string
+  nacionalidad?: string
+  sexo?: string
+  profesion?: string
   estadoCivil?: string
+  fechaNacimiento?: string
+  numeroNupcias?: string
+  conyuge?: string
+  /** Solo para entes jurídicos (ej. acreedor financiero): datos de inscripción registral. */
+  personeriaOtorgadaPor?: string
+  inscripcionRegistral?: string
+  fechaInscripcion?: string
 }
 
 export interface VehiculoParaImprimir {
@@ -46,10 +66,19 @@ export interface ContratoParaImprimir {
   grado?: 1 | 2 | 3 | 4
 }
 
+// Secciones H e I del ST-03. Coordenadas todavía sin confirmar — ver
+// comentario en buildST03Fields.
+export interface ModalidadesContrato {
+  suscriptaAnteEncargado?: boolean
+  clausulaActualizacion?: boolean
+  concepto?: 'saldo_precio' | 'prestamo'
+}
+
 export interface PrendaParaImprimir {
   id: string
   contrato: ContratoParaImprimir
   acreedor: PersonaParaImprimir
   deudores: PersonaParaImprimir[]
   vehiculo: VehiculoParaImprimir
+  modalidades?: ModalidadesContrato
 }

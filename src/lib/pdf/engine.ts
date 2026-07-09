@@ -12,14 +12,15 @@ const FUENTES_ESTANDAR: Record<string, StandardFonts> = {
 const TAMANO_DEFAULT = 10
 
 // Motor genérico: no sabe nada de prendas ni formularios específicos.
-// Recibe un PDF base y una lista de campos con texto + coordenadas,
-// y devuelve el PDF resultante con el texto superpuesto en la página 1.
+// No carga un PDF de fondo: genera páginas en blanco del tamaño indicado
+// y superpone el texto, para imprimir sobre el papel oficial físico.
 export async function generarPDF(
-  pdfBase: Buffer | Uint8Array,
-  campos: CampoPDF[]
+  campos: CampoPDF[],
+  tamanoPagina: [number, number],
+  cantidadPaginas: number
 ): Promise<Uint8Array> {
-  const pdfDoc = await PDFDocument.load(pdfBase)
-  const pagina = pdfDoc.getPage(0)
+  const pdfDoc = await PDFDocument.create()
+  const paginas = Array.from({ length: cantidadPaginas }, () => pdfDoc.addPage(tamanoPagina))
 
   const fuentesEmbebidas = new Map<StandardFonts, PDFFont>()
   const obtenerFuente = async (nombre?: string): Promise<PDFFont> => {
@@ -35,6 +36,7 @@ export async function generarPDF(
   for (const campo of campos) {
     if (!campo.texto) continue
 
+    const pagina = paginas[(campo.pagina ?? 1) - 1]
     const fuente = await obtenerFuente(campo.font)
     pagina.drawText(campo.texto, {
       x: campo.x,
