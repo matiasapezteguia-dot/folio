@@ -327,3 +327,15 @@ Obs, AutorizoTDocNro
 - Socio técnico no disponible
 - Claude Code como soporte principal de desarrollo
 - MVP realista: 2-3 meses al ritmo actual
+
+### Aclaración importante sobre los campos de Autoforms
+Los nombres de campos documentados (ApelDeudor1, CuitDeudor, etc.) son los 
+que usa Autoforms internamente y se documentaron como referencia para entender 
+qué datos van en cada posición del formulario oficial.
+
+Folio NO debe replicar esos nombres. El sistema propio usará nombres en español 
+consistentes con el modelo de datos definido en Supabase.
+
+Los formularios AcroForm que use Folio serán los formularios oficiales de la 
+DNRPA escaneados/digitalizados por nosotros — no los de Autoforms.
+Los nombres de campos en esos AcroForms los definimos nosotros al crearlos.
