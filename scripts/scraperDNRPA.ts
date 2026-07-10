@@ -3,10 +3,18 @@
 // modelos y tipos asociados. Genera un JSON crudo (dnrpa_modelos.json)
 // y un SQL de carga para marca_vehiculo / modelo_vehiculo (dnrpa_modelos.sql).
 //
-// El sitio no expone un <select> con todas las marcas: hay que buscarlas
-// por coincidencia de texto en el código. Como todo código de marca está
-// formado por dígitos 0-9, se barren los 10 dígitos y se deduplica por
-// código para cubrir el universo completo.
+// ADMTM01.php no expone un <select> con todas las marcas al pedirlo con GET
+// (devuelve el <select> vacío hasta que se busca algo) y la búsqueda por
+// código (forma=codigo) trunca cada resultado a 100 filas y además ignora
+// por completo dato="0" (bug del propio sitio), por lo que barrer dígitos
+// 0-9 deja afuera cualquier código que no entre en esos primeros 100
+// resultados — entre ellos 044 (FIAT) y 047 (FORD, no 053 como se
+// suponía). Además los códigos no son siempre numéricos (ej. "A48").
+//
+// La búsqueda por descripción (forma=descrip) con un único carácter como
+// prefijo NO está capada (verificado: cuentas por letra como 416 o 321,
+// nunca un corte redondo) y cubre los ~3200 códigos reales, así que se
+// barren las 26 letras A-Z y se deduplica por código.
 //
 // Uso: npx tsx scripts/scraperDNRPA.ts
 
@@ -39,7 +47,7 @@ interface RegistroDNRPA {
 const URL_PORTAL = 'https://www.dnrpa.gov.ar/portal_dnrpa/ada.php?marca-tipo-mod=true'
 const URL_BUSQUEDA_MARCA = 'https://www.dnrpa.gov.ar/ADA/consultas/ADMTM01.php'
 const URL_BUSQUEDA_MODELO = 'https://www.dnrpa.gov.ar/ADA/consultas/ADMTM02.php'
-const DIGITOS_BUSQUEDA = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+const LETRAS_BUSQUEDA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 const DELAY_MS = 500
 const USER_AGENT = 'Mozilla/5.0 (compatible; FolioScraper/1.0)'
 
@@ -72,10 +80,10 @@ function decodificarHTML(buffer: ArrayBuffer): string {
 async function obtenerMarcas(): Promise<Marca[]> {
   const marcasPorCodigo = new Map<string, string>()
 
-  for (const digito of DIGITOS_BUSQUEDA) {
+  for (const letra of LETRAS_BUSQUEDA) {
     const { data } = await axios.post(
       URL_BUSQUEDA_MARCA,
-      new URLSearchParams({ forma: 'codigo', dato: digito, B1: 'Buscar' }),
+      new URLSearchParams({ forma: 'descrip', dato: letra, B1: 'Buscar' }),
       { headers: { 'User-Agent': USER_AGENT }, responseType: 'arraybuffer' },
     )
 
