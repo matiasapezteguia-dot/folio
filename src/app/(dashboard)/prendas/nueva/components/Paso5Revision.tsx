@@ -91,6 +91,24 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
                 etiqueta="Domicilio"
                 valor={`${titular.calle} ${titular.numero}, ${titular.localidad}, ${titular.provincia}`}
               />
+              {titular.actuaMedianteApoderado && titular.apoderado && (
+                <>
+                  <FilaDato etiqueta="Apoderado" valor={titular.apoderado.nombreApellido} />
+                  <FilaDato
+                    etiqueta="Documento del apoderado"
+                    valor={`${titular.apoderado.tipoDocumento} ${titular.apoderado.numeroDocumento}`}
+                  />
+                  <FilaDato
+                    etiqueta="Tipo de poder"
+                    valor={
+                      titular.apoderado.tipoPoder === 'escritura_publica'
+                        ? 'Escritura pública'
+                        : 'Carta poder'
+                    }
+                  />
+                  <FilaDato etiqueta="Datos del poder" valor={titular.apoderado.datosPoder} />
+                </>
+              )}
             </div>
           ))}
         </div>

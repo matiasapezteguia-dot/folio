@@ -1,8 +1,19 @@
 import { create } from 'zustand'
-import type { ContratoWizard, FinancieraWizard, TitularWizard, VehiculoWizard } from '@/types'
+import type { ApoderadoWizard, ContratoWizard, FinancieraWizard, TitularWizard, VehiculoWizard } from '@/types'
 
 const MAX_TITULARES = 4
 const TOTAL_PASOS = 5
+
+export function crearApoderadoVacio(): ApoderadoWizard {
+  return {
+    id: crypto.randomUUID(),
+    nombreApellido: '',
+    tipoDocumento: '',
+    numeroDocumento: '',
+    tipoPoder: '',
+    datosPoder: '',
+  }
+}
 
 function crearTitularVacio(): TitularWizard {
   return {
@@ -22,6 +33,8 @@ function crearTitularVacio(): TitularWizard {
     provincia: '',
     profesion: '',
     porcentaje: 100,
+    actuaMedianteApoderado: false,
+    apoderado: undefined,
   }
 }
 

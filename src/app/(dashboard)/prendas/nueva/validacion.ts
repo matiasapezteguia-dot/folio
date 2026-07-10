@@ -1,6 +1,33 @@
-import type { ClasePrenda, ContratoWizard, FinancieraWizard, TitularWizard, VehiculoWizard } from '@/types'
+import type {
+  ApoderadoWizard,
+  ClasePrenda,
+  ContratoWizard,
+  FinancieraWizard,
+  TitularWizard,
+  VehiculoWizard,
+} from '@/types'
 
 const PATRON_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export interface ErroresApoderado {
+  nombreApellido?: string
+  tipoDocumento?: string
+  numeroDocumento?: string
+  tipoPoder?: string
+}
+
+export function validarApoderado(apoderado: ApoderadoWizard): ErroresApoderado {
+  const errores: ErroresApoderado = {}
+
+  if (!apoderado.nombreApellido.trim()) {
+    errores.nombreApellido = 'Ingresá el nombre y apellido del apoderado'
+  }
+  if (!apoderado.tipoDocumento) errores.tipoDocumento = 'Seleccioná el tipo de documento'
+  if (!apoderado.numeroDocumento.trim()) errores.numeroDocumento = 'Ingresá el número de documento'
+  if (!apoderado.tipoPoder) errores.tipoPoder = 'Seleccioná el tipo de poder'
+
+  return errores
+}
 
 export interface ErroresTitular {
   cuitDni?: string
@@ -17,9 +44,12 @@ export interface ErroresTitular {
   localidad?: string
   provincia?: string
   profesion?: string
+  apoderado?: ErroresApoderado
 }
 
 // DNTR Art. 1.8.1: teléfono y email de contacto son obligatorios para el titular/deudor.
+// El apoderado no reemplaza al titular: si actúa mediante apoderado, sus datos
+// también son obligatorios pero se validan además de los del titular, no en su lugar.
 export function validarTitular(titular: TitularWizard): ErroresTitular {
   const errores: ErroresTitular = {}
 
@@ -43,6 +73,18 @@ export function validarTitular(titular: TitularWizard): ErroresTitular {
   if (!titular.localidad.trim()) errores.localidad = 'Ingresá la localidad'
   if (!titular.provincia.trim()) errores.provincia = 'Ingresá la provincia'
   if (!titular.profesion.trim()) errores.profesion = 'Ingresá la profesión'
+
+  if (titular.actuaMedianteApoderado) {
+    const erroresApoderado = titular.apoderado
+      ? validarApoderado(titular.apoderado)
+      : {
+          nombreApellido: 'Ingresá el nombre y apellido del apoderado',
+          tipoDocumento: 'Seleccioná el tipo de documento',
+          numeroDocumento: 'Ingresá el número de documento',
+          tipoPoder: 'Seleccioná el tipo de poder',
+        }
+    if (Object.keys(erroresApoderado).length > 0) errores.apoderado = erroresApoderado
+  }
 
   return errores
 }

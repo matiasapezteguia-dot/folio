@@ -1,17 +1,30 @@
 'use client'
 
 import { useState } from 'react'
-import { usePrendaWizard } from '../hooks/usePrendaWizard'
-import { validarTitular } from '../validacion'
+import { usePrendaWizard, crearApoderadoVacio } from '../hooks/usePrendaWizard'
+import { validarTitular, type ErroresApoderado } from '../validacion'
 import { buscarPersonaPorCuitDni } from '@/lib/services/afipService'
+import { listarApoderadosPorPersona, type ApoderadoGuardado } from '@/lib/services/apoderadoService'
 import { claseCard, claseError, claseInput, claseLabel } from '../estilos'
-import type { EstadoCivilWizard } from '@/types'
+import type { EstadoCivilWizard, TipoDocumento, TipoPoder } from '@/types'
 
 const OPCIONES_ESTADO_CIVIL: { valor: EstadoCivilWizard; etiqueta: string }[] = [
   { valor: 'soltero', etiqueta: 'Soltero/a' },
   { valor: 'casado', etiqueta: 'Casado/a' },
   { valor: 'viudo', etiqueta: 'Viudo/a' },
   { valor: 'divorciado', etiqueta: 'Divorciado/a' },
+]
+
+const OPCIONES_TIPO_DOCUMENTO: { valor: TipoDocumento; etiqueta: string }[] = [
+  { valor: 'DNI', etiqueta: 'DNI' },
+  { valor: 'LE', etiqueta: 'LE' },
+  { valor: 'LC', etiqueta: 'LC' },
+  { valor: 'PASAPORTE', etiqueta: 'Pasaporte' },
+]
+
+const OPCIONES_TIPO_PODER: { valor: TipoPoder; etiqueta: string }[] = [
+  { valor: 'escritura_publica', etiqueta: 'Escritura pública' },
+  { valor: 'carta_poder', etiqueta: 'Carta poder' },
 ]
 
 const MAX_TITULARES = 4
@@ -27,19 +40,38 @@ export default function Paso1Titular({ mostrarErrores }: Paso1TitularProps) {
   const actualizarTitular = usePrendaWizard((estado) => estado.actualizarTitular)
 
   const [buscandoId, setBuscandoId] = useState<string | null>(null)
+  const [apoderadosSugeridos, setApoderadosSugeridos] = useState<Record<string, ApoderadoGuardado[]>>({})
 
   const sumaPorcentajes = titulares.reduce((acumulado, titular) => acumulado + titular.porcentaje, 0)
   const mostrarPorcentajes = titulares.length >= 2
+
+  async function buscarApoderadosSugeridos(id: string, cuitDni: string) {
+    if (!cuitDni.trim() || apoderadosSugeridos[id]) return
+    const apoderados = await listarApoderadosPorPersona(cuitDni)
+    setApoderadosSugeridos((previo) => ({ ...previo, [id]: apoderados }))
+  }
 
   async function manejarBusquedaAfip(id: string, cuitDni: string) {
     if (!cuitDni.trim()) return
     setBuscandoId(id)
     try {
-      const persona = await buscarPersonaPorCuitDni(cuitDni)
+      const [persona, apoderados] = await Promise.all([
+        buscarPersonaPorCuitDni(cuitDni),
+        listarApoderadosPorPersona(cuitDni),
+      ])
       if (persona) actualizarTitular(id, persona)
+      setApoderadosSugeridos((previo) => ({ ...previo, [id]: apoderados }))
     } finally {
       setBuscandoId(null)
     }
+  }
+
+  function manejarToggleApoderado(id: string, cuitDni: string, apoderadoActual: ApoderadoGuardado | undefined, activo: boolean) {
+    actualizarTitular(id, {
+      actuaMedianteApoderado: activo,
+      apoderado: activo ? (apoderadoActual ?? crearApoderadoVacio()) : undefined,
+    })
+    if (activo) buscarApoderadosSugeridos(id, cuitDni)
   }
 
   return (
@@ -47,6 +79,9 @@ export default function Paso1Titular({ mostrarErrores }: Paso1TitularProps) {
       {titulares.map((titular, indice) => {
         const errores = validarTitular(titular)
         const conError = (campo: keyof typeof errores) => mostrarErrores && Boolean(errores[campo])
+        const conErrorApoderado = (campo: keyof ErroresApoderado) =>
+          mostrarErrores && Boolean(errores.apoderado?.[campo])
+        const sugeridos = apoderadosSugeridos[titular.id] ?? []
 
         return (
           <div key={titular.id} className={claseCard}>
@@ -255,6 +290,175 @@ export default function Paso1Titular({ mostrarErrores }: Paso1TitularProps) {
                     }
                     className={claseInput(mostrarErrores && sumaPorcentajes !== 100)}
                   />
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={titular.actuaMedianteApoderado}
+                  onChange={(e) =>
+                    manejarToggleApoderado(titular.id, titular.cuitDni, titular.apoderado, e.target.checked)
+                  }
+                  className="h-4 w-4 accent-[#1B4F8A]"
+                />
+                Actúa mediante apoderado
+              </label>
+
+              {!titular.actuaMedianteApoderado && sugeridos.length > 0 && (
+                <p className="mt-2 text-xs text-gray-500">
+                  Este titular tiene {sugeridos.length} apoderado{sugeridos.length > 1 ? 's' : ''} cargado
+                  {sugeridos.length > 1 ? 's' : ''} anteriormente.
+                </p>
+              )}
+
+              {titular.actuaMedianteApoderado && (
+                <div className="mt-4 space-y-4">
+                  {sugeridos.length > 0 && (
+                    <div>
+                      <p className={claseLabel}>Apoderados ya cargados</p>
+                      <div className="flex flex-wrap gap-2">
+                        {sugeridos.map((sugerido) => (
+                          <button
+                            key={sugerido.id}
+                            type="button"
+                            onClick={() => actualizarTitular(titular.id, { apoderado: sugerido })}
+                            className={[
+                              'rounded-lg border px-3 py-2 text-left text-xs',
+                              titular.apoderado?.id === sugerido.id
+                                ? 'border-[#1B4F8A] bg-[#1B4F8A]/5'
+                                : 'border-gray-300 hover:border-[#1B4F8A]',
+                            ].join(' ')}
+                          >
+                            <span className="block font-medium text-gray-900">{sugerido.nombreApellido}</span>
+                            <span className="text-gray-500">
+                              {sugerido.tipoDocumento} {sugerido.numeroDocumento}
+                            </span>
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => actualizarTitular(titular.id, { apoderado: crearApoderadoVacio() })}
+                          className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-xs font-medium text-gray-600 hover:border-[#1B4F8A] hover:text-[#1B4F8A]"
+                        >
+                          + Cargar apoderado nuevo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <label className={claseLabel}>Nombre y apellido del apoderado</label>
+                      <input
+                        type="text"
+                        value={titular.apoderado?.nombreApellido ?? ''}
+                        onChange={(e) =>
+                          actualizarTitular(titular.id, {
+                            apoderado: {
+                              ...(titular.apoderado ?? crearApoderadoVacio()),
+                              nombreApellido: e.target.value,
+                            },
+                          })
+                        }
+                        className={claseInput(conErrorApoderado('nombreApellido'))}
+                      />
+                      {conErrorApoderado('nombreApellido') && (
+                        <p className={claseError}>{errores.apoderado?.nombreApellido}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className={claseLabel}>Tipo de documento</label>
+                      <select
+                        value={titular.apoderado?.tipoDocumento ?? ''}
+                        onChange={(e) =>
+                          actualizarTitular(titular.id, {
+                            apoderado: {
+                              ...(titular.apoderado ?? crearApoderadoVacio()),
+                              tipoDocumento: e.target.value as TipoDocumento | '',
+                            },
+                          })
+                        }
+                        className={claseInput(conErrorApoderado('tipoDocumento'))}
+                      >
+                        <option value="">Seleccioná una opción</option>
+                        {OPCIONES_TIPO_DOCUMENTO.map((opcion) => (
+                          <option key={opcion.valor} value={opcion.valor}>
+                            {opcion.etiqueta}
+                          </option>
+                        ))}
+                      </select>
+                      {conErrorApoderado('tipoDocumento') && (
+                        <p className={claseError}>{errores.apoderado?.tipoDocumento}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className={claseLabel}>Número de documento</label>
+                      <input
+                        type="text"
+                        value={titular.apoderado?.numeroDocumento ?? ''}
+                        onChange={(e) =>
+                          actualizarTitular(titular.id, {
+                            apoderado: {
+                              ...(titular.apoderado ?? crearApoderadoVacio()),
+                              numeroDocumento: e.target.value,
+                            },
+                          })
+                        }
+                        className={claseInput(conErrorApoderado('numeroDocumento'))}
+                      />
+                      {conErrorApoderado('numeroDocumento') && (
+                        <p className={claseError}>{errores.apoderado?.numeroDocumento}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className={claseLabel}>Tipo de poder</label>
+                      <select
+                        value={titular.apoderado?.tipoPoder ?? ''}
+                        onChange={(e) =>
+                          actualizarTitular(titular.id, {
+                            apoderado: {
+                              ...(titular.apoderado ?? crearApoderadoVacio()),
+                              tipoPoder: e.target.value as TipoPoder | '',
+                            },
+                          })
+                        }
+                        className={claseInput(conErrorApoderado('tipoPoder'))}
+                      >
+                        <option value="">Seleccioná una opción</option>
+                        {OPCIONES_TIPO_PODER.map((opcion) => (
+                          <option key={opcion.valor} value={opcion.valor}>
+                            {opcion.etiqueta}
+                          </option>
+                        ))}
+                      </select>
+                      {conErrorApoderado('tipoPoder') && (
+                        <p className={claseError}>{errores.apoderado?.tipoPoder}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className={claseLabel}>Datos del poder (número/fecha)</label>
+                      <input
+                        type="text"
+                        value={titular.apoderado?.datosPoder ?? ''}
+                        onChange={(e) =>
+                          actualizarTitular(titular.id, {
+                            apoderado: {
+                              ...(titular.apoderado ?? crearApoderadoVacio()),
+                              datosPoder: e.target.value,
+                            },
+                          })
+                        }
+                        className={claseInput(false)}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

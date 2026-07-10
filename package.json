@@ -7,11 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "convertir-pdfs": "tsx scripts/convertirPDFs.ts"
+    "convertir-pdfs": "tsx scripts/convertirPDFs.ts",
+    "scraper-dnrpa": "tsx scripts/scraperDNRPA.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.1",
+    "axios": "^1.18.1",
+    "cheerio": "^1.2.0",
     "next": "16.2.10",
     "pdf-lib": "^1.17.1",
     "react": "19.2.4",

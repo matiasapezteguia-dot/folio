@@ -1,9 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { usePrendaWizard } from '../hooks/usePrendaWizard'
 import { requiereColor } from '../validacion'
 import { claseCard, claseError, claseInput, claseLabel } from '../estilos'
-import type { CondicionVehiculo, UsoVehiculo } from '@/types'
+import { listarMarcasVehiculo, listarModelosPorMarca } from '@/lib/services/vehiculoService'
+import type { CondicionVehiculo, MarcaVehiculo, ModeloVehiculo, UsoVehiculo } from '@/types'
 
 interface Paso2VehiculoProps {
   mostrarErrores: boolean
@@ -14,21 +16,76 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
   const actualizarVehiculo = usePrendaWizard((estado) => estado.actualizarVehiculo)
   const clase = usePrendaWizard((estado) => estado.contrato.clase)
 
+  const [marcas, setMarcas] = useState<MarcaVehiculo[]>([])
+  const [cargandoMarcas, setCargandoMarcas] = useState(true)
+  const [modelos, setModelos] = useState<ModeloVehiculo[]>([])
+
   const conError = (valor: string) => mostrarErrores && !valor.trim()
   const colorRequerido = requiereColor(vehiculo.condicion, clase)
   const colorInvalido = colorRequerido && mostrarErrores && !vehiculo.color.trim()
+
+  const marcaSeleccionada = marcas.find((marca) => marca.nombre === vehiculo.marca)
+  const usarSelects = !cargandoMarcas && marcas.length > 0
+
+  useEffect(() => {
+    let activo = true
+
+    listarMarcasVehiculo().then((resultado) => {
+      if (!activo) return
+      setMarcas(resultado)
+      setCargandoMarcas(false)
+    })
+
+    return () => {
+      activo = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!marcaSeleccionada) return
+
+    let activo = true
+
+    listarModelosPorMarca(marcaSeleccionada.id).then((resultado) => {
+      if (activo) setModelos(resultado)
+    })
+
+    return () => {
+      activo = false
+    }
+  }, [marcaSeleccionada])
+
+  const modelosDisponibles = marcaSeleccionada ? modelos : []
 
   return (
     <div className={claseCard}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={claseLabel}>Marca</label>
-          <input
-            type="text"
-            value={vehiculo.marca}
-            onChange={(e) => actualizarVehiculo({ marca: e.target.value })}
-            className={claseInput(conError(vehiculo.marca))}
-          />
+          {usarSelects ? (
+            <select
+              value={marcaSeleccionada?.id ?? ''}
+              onChange={(e) => {
+                const marca = marcas.find((m) => m.id === e.target.value)
+                actualizarVehiculo({ marca: marca?.nombre ?? '', modelo: '' })
+              }}
+              className={claseInput(conError(vehiculo.marca))}
+            >
+              <option value="">Seleccioná una marca</option>
+              {marcas.map((marca) => (
+                <option key={marca.id} value={marca.id}>
+                  {marca.nombre}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={vehiculo.marca}
+              onChange={(e) => actualizarVehiculo({ marca: e.target.value })}
+              className={claseInput(conError(vehiculo.marca))}
+            />
+          )}
           {conError(vehiculo.marca) && <p className={claseError}>Ingresá la marca</p>}
         </div>
 
@@ -46,12 +103,31 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
 
         <div>
           <label className={claseLabel}>Modelo</label>
-          <input
-            type="text"
-            value={vehiculo.modelo}
-            onChange={(e) => actualizarVehiculo({ modelo: e.target.value })}
-            className={claseInput(conError(vehiculo.modelo))}
-          />
+          {usarSelects ? (
+            <select
+              value={modelosDisponibles.find((modelo) => modelo.nombre === vehiculo.modelo)?.id ?? ''}
+              onChange={(e) => {
+                const modelo = modelosDisponibles.find((m) => m.id === e.target.value)
+                actualizarVehiculo({ modelo: modelo?.nombre ?? '' })
+              }}
+              disabled={!marcaSeleccionada}
+              className={claseInput(conError(vehiculo.modelo))}
+            >
+              <option value="">Seleccioná un modelo</option>
+              {modelosDisponibles.map((modelo) => (
+                <option key={modelo.id} value={modelo.id}>
+                  {modelo.nombre}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={vehiculo.modelo}
+              onChange={(e) => actualizarVehiculo({ modelo: e.target.value })}
+              className={claseInput(conError(vehiculo.modelo))}
+            />
+          )}
           {conError(vehiculo.modelo) && <p className={claseError}>Ingresá el modelo</p>}
         </div>
 

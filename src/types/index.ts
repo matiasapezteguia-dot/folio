@@ -118,11 +118,14 @@ export interface PersonaSujetoObligado extends Auditoria {
 export interface MarcaVehiculo extends Auditoria {
   id: string
   nombre: string
+  codigo_dnrpa?: string
 }
 
 export interface ModeloVehiculo extends Auditoria {
   id: string
   nombre: string
+  codigo_dnrpa?: string
+  id_marca?: string
 }
 
 export interface TipoVehiculo extends Auditoria {
@@ -344,6 +347,16 @@ export type EstadoCivilWizard = 'soltero' | 'casado' | 'viudo' | 'divorciado'
 export type CondicionVehiculo = '0km' | 'usado'
 export type UsoVehiculo = 'particular' | 'comercial'
 export type PrivilegiosPreexistentes = 'ninguno' | 'con_privilegios'
+export type TipoPoder = 'escritura_publica' | 'carta_poder'
+
+export interface ApoderadoWizard {
+  id: string
+  nombreApellido: string
+  tipoDocumento: TipoDocumento | ''
+  numeroDocumento: string
+  tipoPoder: TipoPoder | ''
+  datosPoder: string
+}
 
 export interface TitularWizard {
   id: string
@@ -362,6 +375,8 @@ export interface TitularWizard {
   provincia: string
   profesion: string
   porcentaje: number
+  actuaMedianteApoderado: boolean
+  apoderado?: ApoderadoWizard
 }
 
 export interface VehiculoWizard {
