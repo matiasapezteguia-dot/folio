@@ -1,0 +1,69 @@
+const UNIDADES = [
+  '', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE', 'DIEZ',
+  'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE',
+  'VEINTE', 'VEINTIUNO', 'VEINTIDÓS', 'VEINTITRÉS', 'VEINTICUATRO', 'VEINTICINCO', 'VEINTISÉIS',
+  'VEINTISIETE', 'VEINTIOCHO', 'VEINTINUEVE',
+]
+
+const DECENAS = [
+  '', '', '', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA',
+]
+
+const CENTENAS = [
+  '', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS',
+  'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS',
+]
+
+function convertirGrupo(numero: number): string {
+  if (numero === 0) return ''
+  if (numero === 100) return 'CIEN'
+
+  const centena = Math.floor(numero / 100)
+  const resto = numero % 100
+
+  let texto = centena > 0 ? CENTENAS[centena] : ''
+
+  if (resto > 0) {
+    if (texto) texto += ' '
+    if (resto <= 29) {
+      texto += UNIDADES[resto]
+    } else {
+      const decena = Math.floor(resto / 10)
+      const unidad = resto % 10
+      texto += unidad === 0 ? DECENAS[decena] : `${DECENAS[decena]} Y ${UNIDADES[unidad]}`
+    }
+  }
+
+  return texto
+}
+
+// Convierte un monto a su expresión en letras para formularios legales,
+// ej: numeroALetras(4500000) -> "CUATRO MILLONES QUINIENTOS MIL PESOS CON 00/100"
+export function numeroALetras(monto: number): string {
+  const entero = Math.floor(Math.abs(monto))
+  const centavos = Math.round((Math.abs(monto) - entero) * 100)
+  const centavosTexto = String(centavos).padStart(2, '0')
+
+  if (entero === 0) return `CERO PESOS CON ${centavosTexto}/100`
+
+  const millones = Math.floor(entero / 1_000_000)
+  const miles = Math.floor((entero % 1_000_000) / 1000)
+  const cientos = entero % 1000
+
+  const partes: string[] = []
+
+  if (millones > 0) {
+    partes.push(millones === 1 ? 'UN MILLÓN' : `${convertirGrupo(millones)} MILLONES`)
+  }
+
+  if (miles > 0) {
+    partes.push(miles === 1 ? 'MIL' : `${convertirGrupo(miles)} MIL`)
+  }
+
+  if (cientos > 0) {
+    partes.push(convertirGrupo(cientos))
+  }
+
+  const unidadMonetaria = entero === 1 ? 'PESO' : 'PESOS'
+  return `${partes.join(' ')} ${unidadMonetaria} CON ${centavosTexto}/100`
+}

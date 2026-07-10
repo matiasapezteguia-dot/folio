@@ -334,3 +334,92 @@ export interface Impresora extends Auditoria {
   offset_x: number
   offset_y: number
 }
+
+// ============================================
+// WIZARD DE CARGA DE PRENDA (estado en memoria,
+// no persistido — ver src/app/(dashboard)/prendas/nueva/)
+// ============================================
+
+export type EstadoCivilWizard = 'soltero' | 'casado' | 'viudo' | 'divorciado'
+export type CondicionVehiculo = '0km' | 'usado'
+export type UsoVehiculo = 'particular' | 'comercial'
+export type PrivilegiosPreexistentes = 'ninguno' | 'con_privilegios'
+
+export interface TitularWizard {
+  id: string
+  cuitDni: string
+  nombre: string
+  apellido: string
+  nacionalidad: string
+  edad: string
+  estadoCivil: EstadoCivilWizard | ''
+  conyuge: string
+  telefono: string
+  email: string
+  calle: string
+  numero: string
+  localidad: string
+  provincia: string
+  profesion: string
+  porcentaje: number
+}
+
+export interface VehiculoWizard {
+  marca: string
+  tipo: string
+  modelo: string
+  marcaMotor: string
+  numeroMotor: string
+  marcaChasis: string
+  numeroChasis: string
+  condicion: CondicionVehiculo | ''
+  uso: UsoVehiculo | ''
+  patente: string
+  color: string
+}
+
+export interface AcreedorWizard {
+  nombre: string
+  cuit: string
+  calle: string
+  numero: string
+  localidad: string
+  provincia: string
+  apoderado: string
+}
+
+export interface FinancieraWizard {
+  idFinanciera: string
+  nombreFinanciera: string
+  tipoPrenda: TipoPrenda | ''
+  acreedor?: AcreedorWizard
+}
+
+export interface SeguroWizard {
+  enTramite: boolean
+  compania: string
+  poliza: string
+}
+
+export interface ContratoWizard {
+  monto: string
+  cantidadCuotas: string
+  importeCuota: string
+  fechaPrimeraCuota: string
+  lugarPago: string
+  tasaMoraAnual: string
+  tea: string
+  clase: ClasePrenda
+  moneda: Moneda
+  cotizacionBna: string
+  seguro: SeguroWizard
+  privilegiosPreexistentes: PrivilegiosPreexistentes
+  privilegiosTexto: string
+}
+
+export interface PrendaWizardPayload {
+  titulares: TitularWizard[]
+  vehiculo: VehiculoWizard
+  financiera: FinancieraWizard
+  contrato: ContratoWizard
+}
