@@ -128,16 +128,17 @@ export interface ModeloVehiculo extends Auditoria {
   id_marca?: string
 }
 
-export interface TipoVehiculo extends Auditoria {
+export interface ModeloVehiculoTipo extends Auditoria {
   id: string
-  nombre: string
+  id_modelo: string
+  codigo_tipo: string
+  descripcion_tipo: string
 }
 
 export interface EspecificacionVehiculo extends Auditoria {
   id: string
   id_marca?: string
   id_modelo?: string
-  id_tipo?: string
   numero_certificado?: string
   anio_fabricacion?: number
   modelo_anio?: number

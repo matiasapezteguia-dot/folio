@@ -1,11 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePrendaWizard } from '../hooks/usePrendaWizard'
 import { requiereColor } from '../validacion'
 import { claseCard, claseError, claseInput, claseLabel } from '../estilos'
-import { listarMarcasVehiculo, listarModelosPorMarca } from '@/lib/services/vehiculoService'
-import type { CondicionVehiculo, MarcaVehiculo, ModeloVehiculo, UsoVehiculo } from '@/types'
+import {
+  listarMarcasVehiculo,
+  listarModelosPorMarca,
+  listarTiposPorModelo,
+} from '@/lib/services/vehiculoService'
+import ComboboxBuscable from '@/components/ComboboxBuscable'
+import type { CondicionVehiculo, MarcaVehiculo, ModeloVehiculo, ModeloVehiculoTipo, UsoVehiculo } from '@/types'
 
 interface Paso2VehiculoProps {
   mostrarErrores: boolean
@@ -17,23 +22,31 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
   const clase = usePrendaWizard((estado) => estado.contrato.clase)
 
   const [marcas, setMarcas] = useState<MarcaVehiculo[]>([])
-  const [cargandoMarcas, setCargandoMarcas] = useState(true)
-  const [modelos, setModelos] = useState<ModeloVehiculo[]>([])
+  const [modelosPorMarca, setModelosPorMarca] = useState<{ idMarca: string; lista: ModeloVehiculo[] } | null>(
+    null
+  )
+  const [tiposPorModelo, setTiposPorModelo] = useState<{ idModelo: string; lista: ModeloVehiculoTipo[] } | null>(
+    null
+  )
 
   const conError = (valor: string) => mostrarErrores && !valor.trim()
   const colorRequerido = requiereColor(vehiculo.condicion, clase)
   const colorInvalido = colorRequerido && mostrarErrores && !vehiculo.color.trim()
 
   const marcaSeleccionada = marcas.find((marca) => marca.nombre === vehiculo.marca)
-  const usarSelects = !cargandoMarcas && marcas.length > 0
+  const modelosDisponibles =
+    marcaSeleccionada && modelosPorMarca?.idMarca === marcaSeleccionada.id ? modelosPorMarca.lista : []
+  const modeloSeleccionado = modelosDisponibles.find((modelo) => modelo.nombre === vehiculo.modelo)
+  const tipos = useMemo(
+    () => (modeloSeleccionado && tiposPorModelo?.idModelo === modeloSeleccionado.id ? tiposPorModelo.lista : []),
+    [modeloSeleccionado, tiposPorModelo]
+  )
 
   useEffect(() => {
     let activo = true
 
     listarMarcasVehiculo().then((resultado) => {
-      if (!activo) return
-      setMarcas(resultado)
-      setCargandoMarcas(false)
+      if (activo) setMarcas(resultado)
     })
 
     return () => {
@@ -47,7 +60,7 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
     let activo = true
 
     listarModelosPorMarca(marcaSeleccionada.id).then((resultado) => {
-      if (activo) setModelos(resultado)
+      if (activo) setModelosPorMarca({ idMarca: marcaSeleccionada.id, lista: resultado })
     })
 
     return () => {
@@ -55,79 +68,96 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
     }
   }, [marcaSeleccionada])
 
-  const modelosDisponibles = marcaSeleccionada ? modelos : []
+  useEffect(() => {
+    if (!modeloSeleccionado) return
+
+    let activo = true
+
+    listarTiposPorModelo(modeloSeleccionado.id).then((resultado) => {
+      if (activo) setTiposPorModelo({ idModelo: modeloSeleccionado.id, lista: resultado })
+    })
+
+    return () => {
+      activo = false
+    }
+  }, [modeloSeleccionado])
+
+  useEffect(() => {
+    if (tipos.length === 1) {
+      actualizarVehiculo({ tipo: tipos[0].descripcion_tipo })
+    }
+  }, [tipos, actualizarVehiculo])
 
   return (
     <div className={claseCard}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={claseLabel}>Marca</label>
-          {usarSelects ? (
-            <select
-              value={marcaSeleccionada?.id ?? ''}
-              onChange={(e) => {
-                const marca = marcas.find((m) => m.id === e.target.value)
-                actualizarVehiculo({ marca: marca?.nombre ?? '', modelo: '' })
-              }}
-              className={claseInput(conError(vehiculo.marca))}
-            >
-              <option value="">Seleccioná una marca</option>
-              {marcas.map((marca) => (
-                <option key={marca.id} value={marca.id}>
-                  {marca.nombre}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              value={vehiculo.marca}
-              onChange={(e) => actualizarVehiculo({ marca: e.target.value })}
-              className={claseInput(conError(vehiculo.marca))}
-            />
-          )}
+          <ComboboxBuscable
+            valor={vehiculo.marca}
+            opciones={marcas.map((marca) => ({ id: marca.id, etiqueta: marca.nombre }))}
+            onCambiar={(texto, opcion) => {
+              if (opcion) {
+                actualizarVehiculo({
+                  marca: opcion.etiqueta,
+                  modelo: '',
+                  tipo: '',
+                  marcaMotor: opcion.etiqueta,
+                  marcaChasis: opcion.etiqueta,
+                })
+              } else {
+                actualizarVehiculo({ marca: texto })
+              }
+            }}
+            placeholder="Escribí para buscar…"
+            invalido={conError(vehiculo.marca)}
+          />
           {conError(vehiculo.marca) && <p className={claseError}>Ingresá la marca</p>}
         </div>
 
         <div>
           <label className={claseLabel}>Tipo</label>
-          <input
-            type="text"
-            value={vehiculo.tipo}
-            onChange={(e) => actualizarVehiculo({ tipo: e.target.value })}
-            placeholder="SEDAN 4 PUERTAS, PICK-UP, FURGÓN…"
-            className={claseInput(conError(vehiculo.tipo))}
-          />
+          {tipos.length === 1 ? (
+            <input
+              type="text"
+              value={tipos[0].descripcion_tipo}
+              readOnly
+              className={claseInput(false) + ' cursor-not-allowed bg-gray-100'}
+            />
+          ) : tipos.length >= 2 ? (
+            <ComboboxBuscable
+              valor={vehiculo.tipo}
+              opciones={tipos.map((tipo) => ({ id: tipo.id, etiqueta: tipo.descripcion_tipo }))}
+              onCambiar={(texto, opcion) => {
+                actualizarVehiculo({ tipo: opcion ? opcion.etiqueta : texto })
+              }}
+              placeholder="Seleccioná el tipo…"
+              invalido={conError(vehiculo.tipo)}
+            />
+          ) : (
+            <input
+              type="text"
+              value={vehiculo.tipo}
+              onChange={(e) => actualizarVehiculo({ tipo: e.target.value })}
+              placeholder="SEDAN 4 PUERTAS, PICK-UP, FURGÓN…"
+              className={claseInput(conError(vehiculo.tipo))}
+            />
+          )}
           {conError(vehiculo.tipo) && <p className={claseError}>Ingresá el tipo</p>}
         </div>
 
         <div>
           <label className={claseLabel}>Modelo</label>
-          {usarSelects ? (
-            <select
-              value={modelosDisponibles.find((modelo) => modelo.nombre === vehiculo.modelo)?.id ?? ''}
-              onChange={(e) => {
-                const modelo = modelosDisponibles.find((m) => m.id === e.target.value)
-                actualizarVehiculo({ modelo: modelo?.nombre ?? '' })
-              }}
-              disabled={!marcaSeleccionada}
-              className={claseInput(conError(vehiculo.modelo))}
-            >
-              <option value="">Seleccioná un modelo</option>
-              {modelosDisponibles.map((modelo) => (
-                <option key={modelo.id} value={modelo.id}>
-                  {modelo.nombre}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="text"
-              value={vehiculo.modelo}
-              onChange={(e) => actualizarVehiculo({ modelo: e.target.value })}
-              className={claseInput(conError(vehiculo.modelo))}
-            />
-          )}
+          <ComboboxBuscable
+            valor={vehiculo.modelo}
+            opciones={modelosDisponibles.map((modelo) => ({ id: modelo.id, etiqueta: modelo.nombre }))}
+            disabled={!vehiculo.marca.trim()}
+            onCambiar={(texto, opcion) => {
+              actualizarVehiculo({ modelo: opcion ? opcion.etiqueta : texto, tipo: '' })
+            }}
+            placeholder="Escribí para buscar…"
+            invalido={conError(vehiculo.modelo)}
+          />
           {conError(vehiculo.modelo) && <p className={claseError}>Ingresá el modelo</p>}
         </div>
 
@@ -139,7 +169,11 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
             onChange={(e) => actualizarVehiculo({ marcaMotor: e.target.value })}
             className={claseInput(conError(vehiculo.marcaMotor))}
           />
-          {conError(vehiculo.marcaMotor) && <p className={claseError}>Ingresá la marca del motor</p>}
+          {conError(vehiculo.marcaMotor) ? (
+            <p className={claseError}>Ingresá la marca del motor</p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">Autocompletado desde la marca del vehículo</p>
+          )}
         </div>
 
         <div>
@@ -161,7 +195,11 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
             onChange={(e) => actualizarVehiculo({ marcaChasis: e.target.value })}
             className={claseInput(conError(vehiculo.marcaChasis))}
           />
-          {conError(vehiculo.marcaChasis) && <p className={claseError}>Ingresá la marca del chasis</p>}
+          {conError(vehiculo.marcaChasis) ? (
+            <p className={claseError}>Ingresá la marca del chasis</p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">Autocompletado desde la marca del vehículo</p>
+          )}
         </div>
 
         <div>

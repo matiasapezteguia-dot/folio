@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "convertir-pdfs": "tsx scripts/convertirPDFs.ts",
-    "scraper-dnrpa": "tsx scripts/scraperDNRPA.ts"
+    "scraper-dnrpa": "tsx scripts/scraperDNRPA.ts",
+    "importar-dnrpa": "tsx --env-file=.env.local scripts/importarDNRPA.ts",
+    "importar-tipos": "tsx --env-file=.env.local scripts/importarDNRPA.ts --solo-tipos",
+    "poblar-tipos": "tsx scripts/poblarTipos.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
