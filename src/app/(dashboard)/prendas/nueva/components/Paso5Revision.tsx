@@ -2,11 +2,115 @@
 
 import { useState } from 'react'
 import { usePrendaWizard } from '../hooks/usePrendaWizard'
+import { claseCard } from '../estilos'
 import { formatMoneda } from '@/lib/utils/formatMoneda'
 import { numeroALetras } from '@/lib/utils/numeroALetras'
+import type { TipoPrenda } from '@/types'
 
 interface Paso5RevisionProps {
   onVolverAEditar: () => void
+}
+
+interface DocumentoWizard {
+  id: string
+  nombre: string
+  descripcion: string
+  activo: boolean
+}
+
+function documentosPorTipoPrenda(tipoPrenda: TipoPrenda | ''): DocumentoWizard[] {
+  const st03: DocumentoWizard = {
+    id: 'st03',
+    nombre: 'Solicitud Tipo 03',
+    descripcion: 'Inscripción de la prenda ante el Registro Nacional de la Propiedad Automotor.',
+    activo: true,
+  }
+  const st02: DocumentoWizard = {
+    id: 'st02',
+    nombre: 'Solicitud Tipo 02',
+    descripcion: 'Certificado de estado de dominio del vehículo.',
+    activo: false,
+  }
+
+  if (tipoPrenda === 'compania_financiera') {
+    return [
+      {
+        id: 'contrato-compania-financiera',
+        nombre: 'Contrato Prendario (financiera)',
+        descripcion: 'Contrato de prenda con la compañía financiera.',
+        activo: false,
+      },
+      st03,
+      st02,
+    ]
+  }
+
+  if (tipoPrenda === 'plan_ahorro') {
+    return [
+      {
+        id: 'contrato-plan-ahorro',
+        nombre: 'Contrato Prendario (plan de ahorro)',
+        descripcion: 'Contrato de prenda del plan de ahorro.',
+        activo: false,
+      },
+      {
+        id: 'anexo-clausulas-especiales',
+        nombre: 'Anexo de Cláusulas Especiales',
+        descripcion: 'Cláusulas particulares del plan de ahorro.',
+        activo: false,
+      },
+      st03,
+      st02,
+    ]
+  }
+
+  return []
+}
+
+function nombreArchivoST03(dominio: string): string {
+  const hoy = new Date()
+  const anio = hoy.getFullYear()
+  const mes = String(hoy.getMonth() + 1).padStart(2, '0')
+  const dia = String(hoy.getDate()).padStart(2, '0')
+  const dominioLimpio = dominio.trim().toUpperCase() || 'SIN-DOMINIO'
+
+  return `ST03_${dominioLimpio}_${anio}${mes}${dia}.pdf`
+}
+
+interface DocumentoCardProps {
+  documento: DocumentoWizard
+  cargando: boolean
+  onDescargar: () => void
+}
+
+function DocumentoCard({ documento, cargando, onDescargar }: DocumentoCardProps) {
+  return (
+    <div className={`${claseCard} flex items-center justify-between gap-4`}>
+      <div>
+        <p className="text-sm font-semibold text-gray-900">{documento.nombre}</p>
+        <p className="mt-0.5 text-xs text-gray-500">{documento.descripcion}</p>
+      </div>
+      {documento.activo ? (
+        <button
+          type="button"
+          onClick={onDescargar}
+          disabled={cargando}
+          className="whitespace-nowrap rounded-lg bg-[#1B4F8A] px-4 py-2 text-sm font-medium text-white hover:bg-[#163f6e] disabled:opacity-50"
+        >
+          {cargando ? 'Generando…' : 'Descargar PDF'}
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled
+          title="En desarrollo"
+          className="whitespace-nowrap cursor-not-allowed rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-400"
+        >
+          Próximamente
+        </button>
+      )}
+    </div>
+  )
 }
 
 function FilaDato({ etiqueta, valor }: { etiqueta: string; valor?: string | number }) {
@@ -37,11 +141,11 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
   const financiera = usePrendaWizard((estado) => estado.financiera)
   const contrato = usePrendaWizard((estado) => estado.contrato)
 
-  const [cargando, setCargando] = useState(false)
+  const [cargandoId, setCargandoId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function manejarGenerarPDF() {
-    setCargando(true)
+  async function manejarDescargarST03() {
+    setCargandoId('st03')
     setError(null)
     try {
       const respuesta = await fetch('/api/pdf/st03', {
@@ -56,14 +160,22 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
 
       const blob = await respuesta.blob()
       const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
+      const enlace = document.createElement('a')
+      enlace.href = url
+      enlace.download = nombreArchivoST03(vehiculo.patente)
+      document.body.appendChild(enlace)
+      enlace.click()
+      document.body.removeChild(enlace)
+      URL.revokeObjectURL(url)
     } catch (err: unknown) {
       const mensaje = err instanceof Error ? err.message : 'Error desconocido al generar el PDF'
       setError(mensaje)
     } finally {
-      setCargando(false)
+      setCargandoId(null)
     }
   }
+
+  const documentos = documentosPorTipoPrenda(financiera.tipoPrenda)
 
   const montoNumerico = Number(contrato.monto)
   const importeCuotaNumerico = Number(contrato.importeCuota)
@@ -169,6 +281,20 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
         />
       </Seccion>
 
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">Documentos para imprimir</h3>
+        <div className="space-y-3">
+          {documentos.map((documento) => (
+            <DocumentoCard
+              key={documento.id}
+              documento={documento}
+              cargando={cargandoId === documento.id}
+              onDescargar={documento.id === 'st03' ? manejarDescargarST03 : () => {}}
+            />
+          ))}
+        </div>
+      </div>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex items-center justify-between border-t border-gray-100 pt-6">
@@ -178,14 +304,6 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
           className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
         >
           Volver a editar
-        </button>
-        <button
-          type="button"
-          onClick={manejarGenerarPDF}
-          disabled={cargando}
-          className="rounded-lg bg-[#1B4F8A] px-5 py-2 text-sm font-medium text-white hover:bg-[#163f6e] disabled:opacity-50"
-        >
-          {cargando ? 'Generando…' : 'Generar PDF'}
         </button>
       </div>
     </div>

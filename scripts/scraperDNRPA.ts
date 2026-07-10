@@ -58,6 +58,17 @@ function escaparSQL(texto: string): string {
   return texto.replace(/'/g, "''")
 }
 
+// El servidor declara charset=UTF-8 pero algunas páginas traen bytes
+// Latin-1 sueltos (ej. Ñ, É de datos cargados hace años). Si el buffer no es
+// UTF-8 válido, decodificar como latin1 evita que esos caracteres se pierdan.
+function decodificarHTML(buffer: ArrayBuffer): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer)
+  } catch {
+    return Buffer.from(buffer).toString('latin1')
+  }
+}
+
 async function obtenerMarcas(): Promise<Marca[]> {
   const marcasPorCodigo = new Map<string, string>()
 
@@ -65,10 +76,10 @@ async function obtenerMarcas(): Promise<Marca[]> {
     const { data } = await axios.post(
       URL_BUSQUEDA_MARCA,
       new URLSearchParams({ forma: 'codigo', dato: digito, B1: 'Buscar' }),
-      { headers: { 'User-Agent': USER_AGENT } },
+      { headers: { 'User-Agent': USER_AGENT }, responseType: 'arraybuffer' },
     )
 
-    const $ = cheerio.load(data)
+    const $ = cheerio.load(decodificarHTML(data))
     $('select[name="marca"] option[value]').each((_, elemento) => {
       const codigo = $(elemento).attr('value')
       if (!codigo) return
@@ -91,10 +102,10 @@ async function obtenerModelosDeMarca(codigoMarca: string): Promise<ModeloTipo[]>
   const { data } = await axios.post(
     URL_BUSQUEDA_MODELO,
     new URLSearchParams({ marca: codigoMarca, forma: 'codigo', dato: '', B1: 'Buscar' }),
-    { headers: { 'User-Agent': USER_AGENT } },
+    { headers: { 'User-Agent': USER_AGENT }, responseType: 'arraybuffer' },
   )
 
-  const $ = cheerio.load(data)
+  const $ = cheerio.load(decodificarHTML(data))
   const modelos: ModeloTipo[] = []
 
   $('tr').each((_, fila) => {
