@@ -1,7 +1,9 @@
-// Extrae { texto, x, y, pagina } de los PDFs de referencia de Autoforms
-// para calibrar las coordenadas del template ST-03.
+// Extrae { texto, x, y, pagina } de PDFs de referencia (overlays reales de
+// Autoforms sobre el formulario físico) para calibrar coordenadas de templates.
 //
-// Uso: npx tsx scripts/extraerCoordenadas.ts
+// Uso: npx tsx scripts/extraerCoordenadas.ts [archivo1.pdf archivo2.pdf ...]
+// Sin argumentos, procesa los PDFs de referencia del ST-03.
+// Los archivos se buscan en scripts/referencias/.
 
 import path from 'node:path'
 import { readFile } from 'node:fs/promises'
@@ -14,10 +16,9 @@ interface ItemExtraido {
   pagina: number
 }
 
-const ARCHIVOS = [
-  'st03_pagina1_datos_reales.pdf',
-  'st03_pagina2_datos_reales.pdf',
-]
+const ARCHIVOS = process.argv.length > 2
+  ? process.argv.slice(2)
+  : ['st03_pagina1_datos_reales.pdf', 'st03_pagina2_datos_reales.pdf']
 
 async function extraerDeArchivo(rutaAbsoluta: string, numeroPagina: number): Promise<ItemExtraido[]> {
   const data = await readFile(rutaAbsoluta)

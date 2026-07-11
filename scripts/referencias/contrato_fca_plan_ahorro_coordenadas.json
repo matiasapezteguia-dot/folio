@@ -1,0 +1,51 @@
+{
+  "form_id": "FCA",
+  "tipo": "plan_ahorro",
+  "conversion_pdflib": "y_pdflib = 1008 - y_autoforms",
+  "campos": {
+    "String\u00011\u0003688\u000290\u00010\u00010\u00018\u0004Left\u00010(\u0000\u0000\u000e\u0003FCA\u0005Calle": {
+      "x": 400,
+      "y": 428
+    },
+    "Ciudad": {
+      "x": 170,
+      "y": 428
+    },
+    "Cuartel": {
+      "x": 423,
+      "y": 398
+    },
+    "CUITDeudor": {
+      "x": 400,
+      "y": 870
+    },
+    "DNIDeudor": {
+      "x": 542,
+      "y": 854
+    },
+    "String\u00011\u0003124\u0003398\u00010\u00010\u00018\u0004Left\u00010/\u0000\u0000\u0014\u0003FCA\fECivilDeudor": {
+      "x": 467,
+      "y": 794
+    },
+    "LugaryFecha\u0006String\u00011\u0003544\u000290\u00010\u00010\u00018\u0004Left\u000105\u0000\u0000\u0016\u0003FCA\u0012NacionalidadDeudor": {
+      "x": 479,
+      "y": 809
+    },
+    "NombreEst": {
+      "x": 326,
+      "y": 414
+    },
+    "String\u00011\u0003309\u0003380\u00010\u00010\u00018\u0004Left\u000102\u0000\u0000\u0019\u0003FCA\u000fProfesionDEudor": {
+      "x": 606,
+      "y": 780
+    },
+    "ProfesionDEudor2": {
+      "x": 606,
+      "y": 794
+    },
+    "String\u00011\u0003542\u0003285\u00010\u00010\u00018\u0004Left\u00010&\u0000\u0000\u001c\u0003FCA\u0003Uso": {
+      "x": 495,
+      "y": 351
+    }
+  }
+}
