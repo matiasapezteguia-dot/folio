@@ -55,6 +55,9 @@ export interface VehiculoParaImprimir {
   numeroChasis?: string
   marcaMotor?: string
   marcaChasis?: string
+  modeloAnio?: number
+  condicion?: '0km' | 'usado'
+  uso?: 'particular' | 'comercial'
 }
 
 export interface ContratoParaImprimir {
@@ -64,6 +67,9 @@ export interface ContratoParaImprimir {
   cantidadCuotas?: number
   importeCuota?: number
   grado?: 1 | 2 | 3 | 4
+  /** Identificadores de plan de ahorro (FCA), no aplica a prendas de financiera. */
+  grupo?: string
+  orden?: string
 }
 
 // Secciones H e I del ST-03. Coordenadas todavía sin confirmar — ver
