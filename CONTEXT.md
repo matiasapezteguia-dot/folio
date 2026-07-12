@@ -278,22 +278,22 @@ Juzgado, Secretaria, DNI, LC, LE, DNIE, CI, Pasap,
 NroDoc, Autoridad, Personeria, NroInscr,
 DiaInscrTit, MesInscrTit, AnoInscrTit, Obs, Autorizo, TDocNro
 
-#### Contrato Página 1
+#### Contrato Página 1 (Plan de Ahorro)
 LugaryFecha, NacionalidadDeudor, AnoP, Ciudad, Calle, Tipo, Uso,
 pcia, dto, Cuartel, NombreEst, ECivilDeudor,
 ProfesionDeudor, ProfesionDeudor2, CUITDeudor, DNIDeudor
 
-#### Contrato Página 2 (deudores solidarios DS1 a DS4)
+#### Contrato Página 2 (Plan de Ahorro — deudores solidarios DS1 a DS4)
 ApelDS1/2/3/4, ECivilDS1/2/3/4, ProfesionDS1/2/3/4,
 NacDS1/2/3/4, EdadDS1/2/3/4,
 Domic1DS1/2/3/4, Domic2DS1/2/3/4, NroDocDS1/2/3/4,
 ApoderadoAcr, Obs, OtrasAnot
 
-#### Hoja Continuación 1 — descripción del bien
+#### Hoja Continuación 1 (Plan de Ahorro) — descripción del bien
 Fecha, Deudor, Deudor2, Marca, Modelo, ModeloAno,
 NroMotor, NroChasis, Obs, Bien, SerieNro
 
-#### Hoja Continuación 2 — garantes y domicilios
+#### Hoja Continuación 2 (Plan de Ahorro) — garantes y domicilios
 Garante, Garante1Cont, Garante2, Grupo, Orden,
 LocalidadRealDeudor, DNIGarante,
 DomicilioGarante, Domicilio2Garante, Domicilio3Garante, DomicilioGarante2,
@@ -302,8 +302,46 @@ NroGarante, CalleGarante, PisoGarante, DeptoGarante,
 NroGaranteAcr, CalleGaranteAcr, PisoGaranteAcr, DeptoGaranteAcr,
 Calle1RealDeudor, NroRealDeudor, PciaRealDeudor, Obs, Obs18, Obs1
 
-#### Hoja Continuación 3 — asentimiento conyugal
+#### Hoja Continuación 3 (Plan de Ahorro) — asentimiento conyugal
 FechaGrupo, Obs, Deudor, Codeudor, Codeudor2, Cont, Orden
+
+#### Contrato Página 1 (Compañía Financiera)
+LugaryFecha, AnoP, Pesos, PesosLetras, PesosLetras2, Deudor, Deudor2,
+Marca, Tipo, Modelo, MarcaMotor, NroMotor, MarcaChasis, NroChasis,
+Unidad, Uso, pcia, dto, Cuartel, NombreEst, Ciudad, Calle,
+Docum (leyenda de cuotas/intereses, texto envuelto en varias líneas),
+Interesdel, SegPesos, SeguroContra, SeguroCompania, SeguroCalle,
+SeguroNro, SeguroPolizaNro, SegVenc, SegVencMes, SegVencAn,
+ApyNombreDeudor, ApyNombreDeudor2, ProfesionDEudor, ProfesionDEudor2,
+ECivilDeudor, Ed, NacionalidadDeudor, DomicilioDeudor, DomicilioDeudor2,
+CUITAcr, DNIDeudor, CUITDeudor
+
+#### Contrato Página 2 (Compañía Financiera — codeudor único + traslado)
+ApelCodeudor1, ECivilCodeudor, ProfesionCodeudor, NacCodeudor,
+FechaNacCodeudor, NroDocCodeudor, Domic1Codeudor, Domic2Codeudor, Obs,
+Traslado, TrasladoMes, TrasladoAno, TrasladoUbic, TrasladoUbicacion2
+
+#### Hojas de Continuación — Compañía Financiera (¡NO reutilizar con Plan de Ahorro!)
+**Importante:** las hojas de continuación de Compañía Financiera son
+formularios físicos distintos de las de Plan de Ahorro — nombres de campo y
+coordenadas no coinciden en nada entre ambas. Se comparó explícitamente
+antes de calibrar (ver comentarios en cada archivo de template). Si se
+agrega una financiera nueva, no asumir que puede reutilizar las hojas de
+continuación de otra — hay que calibrar cada una contra su propio PDF de
+referencia.
+
+- **Hoja Continuación 1** (`hojas_continuacion_pagina1`): Lote1/Lote2 (sin
+  uso, campos de control interno), Di/Mes/Ano (fecha), Acr (nombre
+  acreedor), MontoPrenda, DomAcr (domicilio acreedor), Deudor
+- **Hoja Continuación 2** (`hojas_continuacion_pagina2`): Calle1, Calle2,
+  DomicLegalDeudor, CiudadlegalDeudor, PciaLegalDeudor
+- **Hoja Continuación 3** (`hojas_continuacion_pagina3`) y **Hoja
+  Continuación 4** (`hoja_continuacion4`): Lote1/Lote2, Deudor, NroOrden
+  (patente), Cont (párrafo, sin calibrar — mismo problema de wrap que "Cont"
+  en la Hoja Continuación 3 de Plan de Ahorro). Página 3 y 4 tienen
+  **exactamente las mismas coordenadas** — es una hoja "extra" genérica que
+  Autoforms repite tantas veces como haga falta (garantes/codeudores
+  adicionales), no dos páginas con contenido distinto.
 
 #### ST-04 Página 1 (trámites varios)
 Cubre 7 trámites: cambio carrocería, denuncia robo/hurto/recupero,
@@ -367,6 +405,16 @@ scripts/referencias/
   fca_plan_ahorro_ejemplo2.pdf  ← CAGIONI ROBERTO PABLO
   st03_pagina1_datos_reales.pdf ← referencia coordenadas ST-03
   st03_pagina2_datos_reales.pdf ← referencia coordenadas ST-03
+  contrato/                     ← pares campos/datos_reales usados para
+                                   calibrar el contrato FCA Plan de Ahorro
+                                   (contrato_pag1/2, hoja_cont1/2/3)
+  contrato_cia_financiera/      ← pares campos/datos_reales usados para
+                                   calibrar el contrato FCA Compañía
+                                   Financiera (contrato_pagina1/2,
+                                   hojas_continuacion_pagina1/2/3,
+                                   hoja_continuacion4). Descargados de Drive,
+                                   carpeta "contrato" dentro de
+                                   PRENDA FIAT/Compañia financiera
 
 ### Arquitectura del extractor (Fase 2)
 POST /api/extract/pdf-financiera
@@ -391,9 +439,15 @@ Ejemplos:
 - Tipos TypeScript (src/types/index.ts y src/types/pdf.ts)
 - Arquitectura de generación PDF (engine + template + service + route)
 - ST-03 generando PDF en Legal (612×1008pt) con coordenadas reales
+- ST-02 calibrado con coordenadas verificadas de PDFs de referencia
+- Contrato FCA Plan de Ahorro calibrado (5 páginas: pag1, pag2, hoja_cont1/2/3)
+- Contrato FCA Compañía Financiera calibrado (6 páginas: pag1, pag2,
+  hojas_continuacion_pagina1/2/3, hoja_continuacion4) — ver "Hojas de
+  Continuación — Compañía Financiera" arriba: usa coordenadas propias, no
+  compartidas con Plan de Ahorro
 
 ### En curso
-- Calibración de coordenadas ST-03 contra PDF de referencia Autoforms
+- Sin calibración pendiente por ahora — próximo paso es auth/middleware (ver roadmap abajo)
 
 ### Próximos pasos en orden
 

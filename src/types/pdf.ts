@@ -22,6 +22,7 @@ export interface PersonaParaImprimir {
   nombreCompleto: string
   cuit?: string
   dni?: string
+  edad?: string
   tipoDocumento?: 'DNI' | 'LE' | 'LC'
   autoridadExpedidora?: string
   calle?: string
