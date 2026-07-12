@@ -5,7 +5,7 @@ import { requiereColor } from '../validacion'
 import { claseCard, claseError, claseInput, claseLabel } from '../estilos'
 import { formatMoneda } from '@/lib/utils/formatMoneda'
 import { numeroALetras } from '@/lib/utils/numeroALetras'
-import type { ClasePrenda, Moneda } from '@/types'
+import type { ClasePrenda, ConceptoPrenda, Moneda } from '@/types'
 
 const OPCIONES_CLASE: { valor: ClasePrenda; etiqueta: string }[] = [
   { valor: 'fija', etiqueta: 'Fija' },
@@ -15,6 +15,16 @@ const OPCIONES_CLASE: { valor: ClasePrenda; etiqueta: string }[] = [
 const OPCIONES_MONEDA: { valor: Moneda; etiqueta: string }[] = [
   { valor: 'pesos', etiqueta: 'Pesos' },
   { valor: 'usd', etiqueta: 'USD' },
+]
+
+// Distinción relevante para el asentimiento conyugal (DNTR Título I, Cap. I,
+// Sección 5ª, Art. 2º.1): no se exige cuando el contrato es en concepto de
+// saldo de precio. "Préstamo con garantía recíproca" queda disponible en el
+// tipo (ConceptoPrenda) para el rubro del ST-03, pero no se ofrece acá por
+// ser un caso poco frecuente — se puede sumar más adelante si hace falta.
+const OPCIONES_CONCEPTO: { valor: ConceptoPrenda; etiqueta: string }[] = [
+  { valor: 'saldo_precio', etiqueta: 'Saldo de precio' },
+  { valor: 'prestamo', etiqueta: 'Préstamo' },
 ]
 
 interface Paso4ContratoProps {
@@ -33,6 +43,27 @@ export default function Paso4Contrato({ mostrarErrores }: Paso4ContratoProps) {
   const faltaColorVehiculo = requiereColor(vehiculo.condicion, contrato.clase) && !vehiculo.color.trim()
 
   const conError = (valido: boolean) => mostrarErrores && !valido
+
+  // Sugerencia editable: al cargar monto o cantidad de cuotas, se recalcula
+  // el importe por cuota (monto ÷ cuotas). El gestor puede sobreescribirlo
+  // a mano en cualquier momento; ese valor manual no se toca de nuevo hasta
+  // que vuelva a cambiar el monto o la cantidad de cuotas.
+  function sugerirImporteCuota(monto: string, cantidadCuotas: string): string | undefined {
+    const montoNum = Number(monto)
+    const cuotasNum = Number(cantidadCuotas)
+    if (!(montoNum > 0) || !(cuotasNum > 0)) return undefined
+    return (montoNum / cuotasNum).toFixed(2)
+  }
+
+  function manejarCambioMonto(valor: string) {
+    const importeCuota = sugerirImporteCuota(valor, contrato.cantidadCuotas)
+    actualizarContrato(importeCuota !== undefined ? { monto: valor, importeCuota } : { monto: valor })
+  }
+
+  function manejarCambioCantidadCuotas(valor: string) {
+    const importeCuota = sugerirImporteCuota(contrato.monto, valor)
+    actualizarContrato(importeCuota !== undefined ? { cantidadCuotas: valor, importeCuota } : { cantidadCuotas: valor })
+  }
 
   return (
     <div className="space-y-6">
@@ -82,6 +113,34 @@ export default function Paso4Contrato({ mostrarErrores }: Paso4ContratoProps) {
             </div>
           </div>
 
+          <div>
+            <span className={claseLabel}>Concepto</span>
+            <div className="flex gap-4">
+              {OPCIONES_CONCEPTO.map((opcion) => (
+                <label
+                  key={opcion.valor}
+                  className="flex flex-1 cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm has-[:checked]:border-[#1B4F8A] has-[:checked]:bg-[#1B4F8A]/5"
+                >
+                  <input
+                    type="radio"
+                    name="concepto"
+                    value={opcion.valor}
+                    checked={contrato.concepto === opcion.valor}
+                    onChange={() => actualizarContrato({ concepto: opcion.valor })}
+                    className="h-4 w-4 accent-[#1B4F8A]"
+                  />
+                  {opcion.etiqueta}
+                </label>
+              ))}
+            </div>
+            {mostrarErrores && !contrato.concepto && <p className={claseError}>Seleccioná el concepto</p>}
+            {contrato.concepto === 'prestamo' && (
+              <p className="mt-1 text-xs text-gray-500">
+                En préstamo, si el titular es casado corresponde asentimiento conyugal (DNTR Título I, Sección 5ª)
+              </p>
+            )}
+          </div>
+
           {contrato.moneda === 'usd' && (
             <div className="sm:col-span-2">
               <label className={claseLabel}>Cotización BNA tipo vendedor</label>
@@ -120,7 +179,7 @@ export default function Paso4Contrato({ mostrarErrores }: Paso4ContratoProps) {
             type="number"
             min={0}
             value={contrato.monto}
-            onChange={(e) => actualizarContrato({ monto: e.target.value })}
+            onChange={(e) => manejarCambioMonto(e.target.value)}
             className={claseInput(conError(montoNumerico > 0))}
           />
           {montoNumerico > 0 && <p className="mt-1 text-xs text-gray-500">{formatMoneda(montoNumerico)}</p>}
@@ -143,7 +202,7 @@ export default function Paso4Contrato({ mostrarErrores }: Paso4ContratoProps) {
             type="number"
             min={1}
             value={contrato.cantidadCuotas}
-            onChange={(e) => actualizarContrato({ cantidadCuotas: e.target.value })}
+            onChange={(e) => manejarCambioCantidadCuotas(e.target.value)}
             className={claseInput(conError(Number(contrato.cantidadCuotas) > 0))}
           />
           {conError(Number(contrato.cantidadCuotas) > 0) && (
@@ -160,8 +219,10 @@ export default function Paso4Contrato({ mostrarErrores }: Paso4ContratoProps) {
             onChange={(e) => actualizarContrato({ importeCuota: e.target.value })}
             className={claseInput(conError(Number(contrato.importeCuota) > 0))}
           />
-          {Number(contrato.importeCuota) > 0 && (
+          {Number(contrato.importeCuota) > 0 ? (
             <p className="mt-1 text-xs text-gray-500">{formatMoneda(Number(contrato.importeCuota))}</p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">Se sugiere automáticamente como monto ÷ cuotas</p>
           )}
           {conError(Number(contrato.importeCuota) > 0) && (
             <p className={claseError}>Ingresá el importe por cuota</p>

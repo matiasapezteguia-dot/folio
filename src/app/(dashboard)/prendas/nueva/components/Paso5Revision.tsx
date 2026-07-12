@@ -29,7 +29,7 @@ function documentosPorTipoPrenda(tipoPrenda: TipoPrenda | ''): DocumentoWizard[]
     id: 'st02',
     nombre: 'Solicitud Tipo 02',
     descripcion: 'Certificado de estado de dominio del vehículo.',
-    activo: false,
+    activo: true,
   }
 
   if (tipoPrenda === 'compania_financiera') {
@@ -37,8 +37,14 @@ function documentosPorTipoPrenda(tipoPrenda: TipoPrenda | ''): DocumentoWizard[]
       {
         id: 'contrato-compania-financiera',
         nombre: 'Contrato Prendario (financiera)',
-        descripcion: 'Contrato de prenda con la compañía financiera.',
-        activo: false,
+        descripcion: 'Contrato de prenda con la compañía financiera (original + 1 copia no negociable).',
+        activo: true,
+      },
+      {
+        id: 'hojas-continuacion-cia-financiera',
+        nombre: 'Hojas de Continuación (financiera)',
+        descripcion: 'Hojas de continuación del contrato de prenda (por duplicado, según el DNTR).',
+        activo: true,
       },
       st03,
       st02,
@@ -50,8 +56,14 @@ function documentosPorTipoPrenda(tipoPrenda: TipoPrenda | ''): DocumentoWizard[]
       {
         id: 'contrato-plan-ahorro',
         nombre: 'Contrato Prendario (plan de ahorro)',
-        descripcion: 'Contrato de prenda del plan de ahorro.',
-        activo: false,
+        descripcion: 'Contrato de prenda del plan de ahorro (original + 1 copia no negociable).',
+        activo: true,
+      },
+      {
+        id: 'hojas-continuacion-plan-ahorro',
+        nombre: 'Hojas de Continuación (plan de ahorro)',
+        descripcion: 'Hojas de continuación del contrato de prenda (por duplicado, según el DNTR).',
+        activo: true,
       },
       {
         id: 'anexo-clausulas-especiales',
@@ -67,15 +79,24 @@ function documentosPorTipoPrenda(tipoPrenda: TipoPrenda | ''): DocumentoWizard[]
   return []
 }
 
-function nombreArchivoST03(dominio: string): string {
+function nombreArchivoPdf(prefijo: string, dominio: string): string {
   const hoy = new Date()
   const anio = hoy.getFullYear()
   const mes = String(hoy.getMonth() + 1).padStart(2, '0')
   const dia = String(hoy.getDate()).padStart(2, '0')
   const dominioLimpio = dominio.trim().toUpperCase() || 'SIN-DOMINIO'
 
-  return `ST03_${dominioLimpio}_${anio}${mes}${dia}.pdf`
+  return `${prefijo}_${dominioLimpio}_${anio}${mes}${dia}.pdf`
 }
+
+const nombreArchivoST03 = (dominio: string) => nombreArchivoPdf('ST03', dominio)
+const nombreArchivoST02 = (dominio: string) => nombreArchivoPdf('ST02', dominio)
+const nombreArchivoContratoPlanAhorro = (dominio: string) => nombreArchivoPdf('Contrato-PlanAhorro', dominio)
+const nombreArchivoHojasContinuacionPlanAhorro = (dominio: string) =>
+  nombreArchivoPdf('HojasContinuacion-PlanAhorro', dominio)
+const nombreArchivoContratoCiaFinanciera = (dominio: string) => nombreArchivoPdf('Contrato-CiaFinanciera', dominio)
+const nombreArchivoHojasContinuacionCiaFinanciera = (dominio: string) =>
+  nombreArchivoPdf('HojasContinuacion-CiaFinanciera', dominio)
 
 interface DocumentoCardProps {
   documento: DocumentoWizard
@@ -144,11 +165,11 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
   const [cargandoId, setCargandoId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function manejarDescargarST03() {
-    setCargandoId('st03')
+  async function descargarPdf(id: string, ruta: string, nombreArchivo: string) {
+    setCargandoId(id)
     setError(null)
     try {
-      const respuesta = await fetch('/api/pdf/st03', {
+      const respuesta = await fetch(ruta, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ titulares, vehiculo, financiera, contrato }),
@@ -162,7 +183,7 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
       const url = URL.createObjectURL(blob)
       const enlace = document.createElement('a')
       enlace.href = url
-      enlace.download = nombreArchivoST03(vehiculo.patente)
+      enlace.download = nombreArchivo
       document.body.appendChild(enlace)
       enlace.click()
       document.body.removeChild(enlace)
@@ -173,6 +194,42 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
     } finally {
       setCargandoId(null)
     }
+  }
+
+  const manejarDescargarST03 = () => descargarPdf('st03', '/api/pdf/st03', nombreArchivoST03(vehiculo.patente))
+  const manejarDescargarST02 = () => descargarPdf('st02', '/api/pdf/st02', nombreArchivoST02(vehiculo.patente))
+  const manejarDescargarContratoPlanAhorro = () =>
+    descargarPdf(
+      'contrato-plan-ahorro',
+      '/api/pdf/contrato-plan-ahorro',
+      nombreArchivoContratoPlanAhorro(vehiculo.patente)
+    )
+  const manejarDescargarHojasContinuacionPlanAhorro = () =>
+    descargarPdf(
+      'hojas-continuacion-plan-ahorro',
+      '/api/pdf/hojas-continuacion-plan-ahorro',
+      nombreArchivoHojasContinuacionPlanAhorro(vehiculo.patente)
+    )
+  const manejarDescargarContratoCiaFinanciera = () =>
+    descargarPdf(
+      'contrato-compania-financiera',
+      '/api/pdf/contrato-cia-financiera',
+      nombreArchivoContratoCiaFinanciera(vehiculo.patente)
+    )
+  const manejarDescargarHojasContinuacionCiaFinanciera = () =>
+    descargarPdf(
+      'hojas-continuacion-cia-financiera',
+      '/api/pdf/hojas-continuacion-cia-financiera',
+      nombreArchivoHojasContinuacionCiaFinanciera(vehiculo.patente)
+    )
+
+  const manejaresPorId: Record<string, () => void> = {
+    st03: manejarDescargarST03,
+    st02: manejarDescargarST02,
+    'contrato-plan-ahorro': manejarDescargarContratoPlanAhorro,
+    'hojas-continuacion-plan-ahorro': manejarDescargarHojasContinuacionPlanAhorro,
+    'contrato-compania-financiera': manejarDescargarContratoCiaFinanciera,
+    'hojas-continuacion-cia-financiera': manejarDescargarHojasContinuacionCiaFinanciera,
   }
 
   const documentos = documentosPorTipoPrenda(financiera.tipoPrenda)
@@ -289,7 +346,7 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
               key={documento.id}
               documento={documento}
               cargando={cargandoId === documento.id}
-              onDescargar={documento.id === 'st03' ? manejarDescargarST03 : () => {}}
+              onDescargar={manejaresPorId[documento.id] ?? (() => {})}
             />
           ))}
         </div>

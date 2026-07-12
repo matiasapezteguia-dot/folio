@@ -394,6 +394,39 @@ export interface VehiculoWizard {
   color: string
 }
 
+// Deudor solidario (Plan de Ahorro, hasta 4) o codeudor (Compañía
+// Financiera, un único slot calibrado en el template — ver
+// contrato_fca_cia_financiera_pag2.ts). Un mismo shape para ambos casos:
+// "edad" se usa en Plan de Ahorro, "fechaNacimiento" (fecha real) en
+// Compañía Financiera — la UI muestra el campo que corresponda según
+// financiera.tipoPrenda.
+export interface PrendaDeudorSolidarioWizard {
+  id: string
+  apellido: string
+  nombre: string
+  estadoCivil: EstadoCivilWizard | ''
+  profesion: string
+  nacionalidad: string
+  edad: string
+  fechaNacimiento: string
+  tipoDocumento: TipoDocumento | ''
+  numeroDocumento: string
+  calle: string
+  numero: string
+  piso: string
+  depto: string
+  localidad: string
+  cp: string
+}
+
+// Garante (solo Plan de Ahorro — contrato_hoja_cont2.ts). Campos simples,
+// sin desglosar domicilio (a diferencia del deudor solidario).
+export interface GaranteWizard {
+  nombre: string
+  dni: string
+  domicilio: string
+}
+
 export interface AcreedorWizard {
   nombre: string
   cuit: string
@@ -431,6 +464,10 @@ export interface ContratoWizard {
   seguro: SeguroWizard
   privilegiosPreexistentes: PrivilegiosPreexistentes
   privilegiosTexto: string
+  // Determina si corresponde exigir el asentimiento conyugal (DNTR Título I,
+  // Cap. I, Sección 5ª, Art. 2º.1: no se exige cuando el contrato es en
+  // concepto de saldo de precio).
+  concepto: ConceptoPrenda | ''
 }
 
 export interface PrendaWizardPayload {
@@ -438,4 +475,6 @@ export interface PrendaWizardPayload {
   vehiculo: VehiculoWizard
   financiera: FinancieraWizard
   contrato: ContratoWizard
+  deudoresSolidarios: PrendaDeudorSolidarioWizard[]
+  garante?: GaranteWizard
 }

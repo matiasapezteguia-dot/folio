@@ -32,6 +32,8 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
   const conError = (valor: string) => mostrarErrores && !valor.trim()
   const colorRequerido = requiereColor(vehiculo.condicion, clase)
   const colorInvalido = colorRequerido && mostrarErrores && !vehiculo.color.trim()
+  const patenteRequerida = vehiculo.condicion === 'usado'
+  const patenteInvalida = patenteRequerida && mostrarErrores && !vehiculo.patente.trim()
 
   const marcaSeleccionada = marcas.find((marca) => marca.nombre === vehiculo.marca)
   const modelosDisponibles =
@@ -219,9 +221,19 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
             type="text"
             value={vehiculo.patente}
             onChange={(e) => actualizarVehiculo({ patente: e.target.value.toUpperCase() })}
-            placeholder="Vacío si es 0km"
-            className={claseInput(false)}
+            disabled={vehiculo.condicion === '0km'}
+            placeholder={vehiculo.condicion === '0km' ? 'No aplica (0km)' : undefined}
+            className={`${claseInput(patenteInvalida)} ${
+              vehiculo.condicion === '0km' ? 'cursor-not-allowed bg-gray-100' : ''
+            }`}
           />
+          {vehiculo.condicion === '0km' ? (
+            <p className="mt-1 text-xs text-gray-500">
+              No aplica — el vehículo 0km todavía no tiene patente asignada.
+            </p>
+          ) : (
+            patenteInvalida && <p className={claseError}>Ingresá el dominio/patente</p>
+          )}
         </div>
 
         <div>
@@ -254,7 +266,7 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
                   name="condicion"
                   value={valor}
                   checked={vehiculo.condicion === valor}
-                  onChange={() => actualizarVehiculo({ condicion: valor })}
+                  onChange={() => actualizarVehiculo({ condicion: valor, patente: valor === '0km' ? '' : vehiculo.patente })}
                   className="h-4 w-4 accent-[#1B4F8A]"
                 />
                 {valor === '0km' ? '0km' : 'Usado'}

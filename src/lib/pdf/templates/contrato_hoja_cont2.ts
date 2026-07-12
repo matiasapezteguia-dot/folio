@@ -8,13 +8,17 @@ export const HOJA_CONT2_CANTIDAD_PAGINAS = 1
 // contra hoja_cont2_datos_reales.pdf — cada (x,y) coincide exactamente entre
 // ambos, confirmando la identidad de cada campo.
 //
-// La muestra disponible no tenía garante (todos los campos "Garante*" y
-// "*Garante*" del PDF de campos aparecen vacíos o degenerados — "Garante2"
-// imprimió apenas un ";", evidencia de que el campo existe pero no de su
-// formato real), así que quedan comentados hasta calibrar contra un trámite
-// con garante.
+// Garante, DNIGarante y DomicilioGarante: la muestra disponible no tenía
+// garante cargado, así que no hay evidencia real del FORMATO exacto — pero
+// la posición de cada campo sí está confirmada (viene del PDF de campos), y
+// ahora que el wizard captura datos de garante (data.garante) se activan
+// con el criterio de formato ya usado en el resto del contrato (nombre tal
+// cual, "D.N.I.: NNNN", domicilio como texto libre en un solo campo). El
+// resto de los campos "Garante*"/"*Garante*" (Garante1Cont, Garante2,
+// Domicilio2Garante, etc. — para un eventual 2º garante o domicilio legal
+// distinto) siguen sin campo modelado en el wizard, quedan comentados.
 export function buildHojaCont2Fields(data: PrendaParaImprimir): CampoPDF[] {
-  const { contrato, deudores } = data
+  const { contrato, deudores, garante } = data
   const solicitante = deudores[0]
 
   return [
@@ -27,11 +31,13 @@ export function buildHojaCont2Fields(data: PrendaParaImprimir): CampoPDF[] {
     { texto: solicitante?.localidad ?? '', x: 133.8, y: 443.16, size: 9, pagina: 1 },
     { texto: solicitante?.provincia ?? '', x: 346.2, y: 440.76, size: 9, pagina: 1 },
 
+    // Garante (opcional — wizard: paso "Deudores solidarios/Garantes")
+    { texto: garante?.nombre ?? '', x: 87.6, y: 642.36, size: 9, pagina: 1 }, // Garante
+    { texto: garante?.dni ? `D.N.I.: ${garante.dni}` : '', x: 240.6, y: 635.16, size: 9, pagina: 1 }, // DNIGarante
+    { texto: garante?.domicilio ?? '', x: 385.8, y: 635.16, size: 9, pagina: 1 }, // DomicilioGarante
+
     // Sin evidencia real todavía (posición conocida por el PDF de campos):
-    // { texto: '', x: 87.6,   y: 642.36, size: 9, pagina: 1 }, // Garante
     // { texto: '', x: 63,     y: 635.16, size: 9, pagina: 1 }, // Garante1Cont
-    // { texto: '', x: 240.6,  y: 635.16, size: 9, pagina: 1 }, // DNIGarante
-    // { texto: '', x: 385.8,  y: 635.16, size: 9, pagina: 1 }, // DomicilioGarante
     // { texto: '', x: 63,     y: 627.96, size: 9, pagina: 1 }, // Domicilio2Garante
     // { texto: '', x: 63,     y: 620.76, size: 9, pagina: 1 }, // Domicilio3Garante
     // { texto: '', x: 305.4,  y: 620.76, size: 9, pagina: 1 }, // Garante2 (imprimió ";" suelto en la muestra, sin nombre real)

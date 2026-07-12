@@ -1,5 +1,35 @@
 import type { PersonaParaImprimir, PrendaParaImprimir } from '@/types/pdf'
-import type { PrendaWizardPayload } from '@/types'
+import type { PrendaDeudorSolidarioWizard, PrendaWizardPayload } from '@/types'
+import { combinarPDFs, generarPDF } from '@/lib/pdf/engine'
+import { CONTRATO_PAG1_TAMANO_PAGINA, buildContratoPag1Fields } from '@/lib/pdf/templates/contrato_fca_plan_ahorro_pag1'
+import { CONTRATO_PAG2_TAMANO_PAGINA, buildContratoPag2Fields } from '@/lib/pdf/templates/contrato_fca_plan_ahorro_pag2'
+import { HOJA_CONT1_TAMANO_PAGINA, buildHojaCont1Fields } from '@/lib/pdf/templates/contrato_hoja_cont1'
+import { HOJA_CONT2_TAMANO_PAGINA, buildHojaCont2Fields } from '@/lib/pdf/templates/contrato_hoja_cont2'
+import { HOJA_CONT3_TAMANO_PAGINA, buildHojaCont3Fields } from '@/lib/pdf/templates/contrato_hoja_cont3'
+import {
+  CONTRATO_FCA_CIA_FINANCIERA_PAG1_TAMANO_PAGINA,
+  buildContratoFcaCiaFinancieraPag1Fields,
+} from '@/lib/pdf/templates/contrato_fca_cia_financiera_pag1'
+import {
+  CONTRATO_FCA_CIA_FINANCIERA_PAG2_TAMANO_PAGINA,
+  buildContratoFcaCiaFinancieraPag2Fields,
+} from '@/lib/pdf/templates/contrato_fca_cia_financiera_pag2'
+import {
+  HOJA_CONT_CIA_FINANCIERA_1_TAMANO_PAGINA,
+  buildHojaContCiaFinanciera1Fields,
+} from '@/lib/pdf/templates/contrato_fca_cia_financiera_hoja_cont1'
+import {
+  HOJA_CONT_CIA_FINANCIERA_2_TAMANO_PAGINA,
+  buildHojaContCiaFinanciera2Fields,
+} from '@/lib/pdf/templates/contrato_fca_cia_financiera_hoja_cont2'
+import {
+  HOJA_CONT_CIA_FINANCIERA_3_TAMANO_PAGINA,
+  buildHojaContCiaFinanciera3Fields,
+} from '@/lib/pdf/templates/contrato_fca_cia_financiera_hoja_cont3'
+import {
+  HOJA_CONT_CIA_FINANCIERA_4_TAMANO_PAGINA,
+  buildHojaContCiaFinanciera4Fields,
+} from '@/lib/pdf/templates/contrato_fca_cia_financiera_hoja_cont4'
 
 // TODO: reemplazar por consulta a Supabase (prenda + contrato + deudores +
 // acreedor_prendario + especificacion_vehiculo) una vez definido el mapeo
@@ -75,10 +105,32 @@ function separarCuitDni(valor: string): Pick<PersonaParaImprimir, 'cuit' | 'dni'
   return {}
 }
 
+// Deudor solidario (Plan de Ahorro, DS1..DS4) o codeudor (Compañía
+// Financiera, un único slot) — mismo mapeo para ambos, ver
+// PrendaDeudorSolidarioWizard.
+function mapDeudorSolidario(deudor: PrendaDeudorSolidarioWizard): PersonaParaImprimir {
+  return {
+    nombreCompleto: `${deudor.apellido}, ${deudor.nombre}`.toUpperCase(),
+    dni: deudor.numeroDocumento || undefined,
+    tipoDocumento: deudor.tipoDocumento || undefined,
+    nacionalidad: deudor.nacionalidad || undefined,
+    edad: deudor.edad || undefined,
+    fechaNacimiento: deudor.fechaNacimiento || undefined,
+    profesion: deudor.profesion || undefined,
+    estadoCivil: deudor.estadoCivil || undefined,
+    calle: deudor.calle || undefined,
+    numero: deudor.numero || undefined,
+    piso: deudor.piso || undefined,
+    depto: deudor.depto || undefined,
+    localidad: deudor.localidad || undefined,
+    cp: deudor.cp || undefined,
+  }
+}
+
 // Traduce el estado en memoria del wizard de carga (src/app/(dashboard)/prendas/nueva/)
 // a la vista aplanada que consume el template ST-03. No persiste nada en Supabase.
 export function mapWizardAPrendaParaImprimir(wizard: PrendaWizardPayload): PrendaParaImprimir {
-  const { titulares, vehiculo, financiera, contrato } = wizard
+  const { titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante } = wizard
 
   return {
     id: 'wizard',
@@ -101,6 +153,7 @@ export function mapWizardAPrendaParaImprimir(wizard: PrendaWizardPayload): Prend
       nombreCompleto: `${titular.apellido}, ${titular.nombre}`.toUpperCase(),
       ...separarCuitDni(titular.cuitDni),
       nacionalidad: titular.nacionalidad || undefined,
+      edad: titular.edad || undefined,
       profesion: titular.profesion || undefined,
       estadoCivil: titular.estadoCivil || undefined,
       conyuge: titular.estadoCivil === 'casado' ? titular.conyuge || undefined : undefined,
@@ -120,6 +173,137 @@ export function mapWizardAPrendaParaImprimir(wizard: PrendaWizardPayload): Prend
       numeroChasis: vehiculo.numeroChasis || undefined,
       marcaMotor: vehiculo.marcaMotor || undefined,
       marcaChasis: vehiculo.marcaChasis || undefined,
+      condicion: vehiculo.condicion || undefined,
+      uso: vehiculo.uso || undefined,
     },
+    // ModalidadesContrato.concepto solo distingue saldo_precio/prestamo (uso
+    // en ST-03 y en la excepción de asentimiento conyugal); "préstamo con
+    // garantía recíproca" se trata como préstamo a estos efectos.
+    modalidades: contrato.concepto
+      ? { concepto: contrato.concepto === 'saldo_precio' ? 'saldo_precio' : 'prestamo' }
+      : undefined,
+    deudoresSolidarios: deudoresSolidarios.length > 0 ? deudoresSolidarios.map(mapDeudorSolidario) : undefined,
+    garante: garante
+      ? {
+          nombre: garante.nombre.toUpperCase(),
+          dni: garante.dni || undefined,
+          domicilio: garante.domicilio || undefined,
+        }
+      : undefined,
   }
+}
+
+// DNTR Título I, Cap. I, Sección 5ª: el asentimiento conyugal se exige
+// cuando el deudor está casado (Art. 1º.1), SALVO que el contrato sea en
+// concepto de saldo de precio (Art. 2º.1) — excepción expresa del Digesto.
+// Mientras no se sepa el concepto (contrato.concepto sin elegir todavía en
+// el wizard) se asume que corresponde, para no omitir por defecto un
+// documento legalmente exigible.
+//
+// TODO: falta el criterio de "bien ganancial" (Art. 470 CCC inciso a exige
+// asentimiento solo sobre bienes GANANCIALES, no propios) — PrendaParaImprimir
+// no modela el régimen patrimonial del matrimonio todavía, solo estadoCivil.
+// Tampoco están modeladas las demás excepciones del Art. 2º (ambos cónyuges
+// copropietarios/codeudores, garante/avalista, orden judicial, bien no
+// registrable).
+function requiereAsentimientoConyugal(
+  solicitante: PersonaParaImprimir | undefined,
+  concepto: 'saldo_precio' | 'prestamo' | undefined
+): boolean {
+  return solicitante?.estadoCivil === 'casado' && concepto !== 'saldo_precio'
+}
+
+// Deudor solidario (Plan de Ahorro) o codeudor (Compañía Financiera) — mismo
+// campo (deudoresSolidarios) para ambos, ver mapDeudorSolidario().
+function tieneDeudorSolidario(prenda: PrendaParaImprimir): boolean {
+  return (prenda.deudoresSolidarios?.length ?? 0) > 0
+}
+
+// Garante (solo Plan de Ahorro — contrato_hoja_cont2.ts).
+function tieneGarante(prenda: PrendaParaImprimir): boolean {
+  return prenda.garante !== undefined
+}
+
+// El DNTR exige regímenes de copias distintos para el contrato (original +
+// 1 copia no negociable) y las hojas de continuación (por duplicado) — por
+// eso se generan como dos PDFs independientes en vez de uno solo. Cada
+// función arma su documento llamando generarPDF() por página/hoja y
+// concatenando con combinarPDFs() (ambos en lib/pdf/engine.ts, agnósticos
+// de dominio); la decisión de qué hoja corresponde vive acá, no en
+// route.ts ni en los templates.
+
+// Contrato Plan de Ahorro: página 1 siempre + página 2 (deudores
+// solidarios) solo si hay al menos uno cargado.
+export async function buildContratoPlanAhorroDocumento(prenda: PrendaParaImprimir): Promise<Uint8Array> {
+  const pdfs = [await generarPDF(buildContratoPag1Fields(prenda), CONTRATO_PAG1_TAMANO_PAGINA, 1)]
+
+  if (tieneDeudorSolidario(prenda)) {
+    pdfs.push(await generarPDF(buildContratoPag2Fields(prenda), CONTRATO_PAG2_TAMANO_PAGINA, 1))
+  }
+
+  return combinarPDFs(pdfs)
+}
+
+// Hojas de continuación Plan de Ahorro: hoja 1 (descripción del bien)
+// siempre + hoja 2 (garante) solo si hay garante + hoja 3 (asentimiento
+// conyugal) solo si corresponde.
+export async function buildHojasContinuacionPlanAhorroDocumento(prenda: PrendaParaImprimir): Promise<Uint8Array> {
+  const pdfs = [await generarPDF(buildHojaCont1Fields(prenda), HOJA_CONT1_TAMANO_PAGINA, 1)]
+
+  if (tieneGarante(prenda)) {
+    pdfs.push(await generarPDF(buildHojaCont2Fields(prenda), HOJA_CONT2_TAMANO_PAGINA, 1))
+  }
+
+  if (requiereAsentimientoConyugal(prenda.deudores[0], prenda.modalidades?.concepto)) {
+    pdfs.push(await generarPDF(buildHojaCont3Fields(prenda), HOJA_CONT3_TAMANO_PAGINA, 1))
+  }
+
+  return combinarPDFs(pdfs)
+}
+
+// Contrato Compañía Financiera: página 1 siempre + página 2 (codeudor)
+// solo si hay uno cargado (único slot calibrado en el template — ver
+// contrato_fca_cia_financiera_pag2.ts).
+export async function buildContratoCiaFinancieraDocumento(prenda: PrendaParaImprimir): Promise<Uint8Array> {
+  const pdfs = [
+    await generarPDF(
+      buildContratoFcaCiaFinancieraPag1Fields(prenda),
+      CONTRATO_FCA_CIA_FINANCIERA_PAG1_TAMANO_PAGINA,
+      1
+    ),
+  ]
+
+  if (tieneDeudorSolidario(prenda)) {
+    pdfs.push(
+      await generarPDF(
+        buildContratoFcaCiaFinancieraPag2Fields(prenda),
+        CONTRATO_FCA_CIA_FINANCIERA_PAG2_TAMANO_PAGINA,
+        1
+      )
+    )
+  }
+
+  return combinarPDFs(pdfs)
+}
+
+// Hojas de continuación Compañía Financiera: página 1 y 2 siempre (base
+// fija del formulario — domicilio legal, etc., sin condicional confirmada
+// todavía). Hoja 3 y 4 son la misma hoja "extra" genérica repetida (ver
+// contrato_fca_cia_financiera_hoja_cont3.ts) que Autoforms agrega para
+// codeudor/garante adicional — se incluyen solo si hay codeudor cargado.
+// El criterio exacto de cuántas hojas extra hacen falta no está calibrado
+// contra un PDF real todavía; se incluyen ambas (3 y 4) como aproximación
+// hasta confirmarlo.
+export async function buildHojasContinuacionCiaFinancieraDocumento(prenda: PrendaParaImprimir): Promise<Uint8Array> {
+  const pdfs = [
+    await generarPDF(buildHojaContCiaFinanciera1Fields(prenda), HOJA_CONT_CIA_FINANCIERA_1_TAMANO_PAGINA, 1),
+    await generarPDF(buildHojaContCiaFinanciera2Fields(prenda), HOJA_CONT_CIA_FINANCIERA_2_TAMANO_PAGINA, 1),
+  ]
+
+  if (tieneDeudorSolidario(prenda)) {
+    pdfs.push(await generarPDF(buildHojaContCiaFinanciera3Fields(prenda), HOJA_CONT_CIA_FINANCIERA_3_TAMANO_PAGINA, 1))
+    pdfs.push(await generarPDF(buildHojaContCiaFinanciera4Fields(prenda), HOJA_CONT_CIA_FINANCIERA_4_TAMANO_PAGINA, 1))
+  }
+
+  return combinarPDFs(pdfs)
 }

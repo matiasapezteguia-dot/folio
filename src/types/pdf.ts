@@ -23,11 +23,12 @@ export interface PersonaParaImprimir {
   cuit?: string
   dni?: string
   edad?: string
-  tipoDocumento?: 'DNI' | 'LE' | 'LC'
+  tipoDocumento?: 'DNI' | 'LE' | 'LC' | 'PASAPORTE'
   autoridadExpedidora?: string
   calle?: string
   numero?: string
   piso?: string
+  depto?: string
   cp?: string
   localidad?: string
   partido?: string
@@ -81,6 +82,15 @@ export interface ModalidadesContrato {
   concepto?: 'saldo_precio' | 'prestamo'
 }
 
+// Garante (solo Plan de Ahorro — contrato_hoja_cont2.ts, campos Garante,
+// DNIGarante, DomicilioGarante). Domicilio en un solo campo de texto, sin
+// desglosar, a diferencia de PersonaParaImprimir.
+export interface GaranteParaImprimir {
+  nombre: string
+  dni?: string
+  domicilio?: string
+}
+
 export interface PrendaParaImprimir {
   id: string
   contrato: ContratoParaImprimir
@@ -88,4 +98,10 @@ export interface PrendaParaImprimir {
   deudores: PersonaParaImprimir[]
   vehiculo: VehiculoParaImprimir
   modalidades?: ModalidadesContrato
+  // Deudores solidarios (Plan de Ahorro, hasta 4 — DS1..DS4 en
+  // contrato_fca_plan_ahorro_pag2.ts) o codeudor (Compañía Financiera, un
+  // único slot calibrado — deudoresSolidarios[0] en
+  // contrato_fca_cia_financiera_pag2.ts). Orden = índice del array.
+  deudoresSolidarios?: PersonaParaImprimir[]
+  garante?: GaranteParaImprimir
 }

@@ -2,15 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { usePrendaWizard } from './hooks/usePrendaWizard'
-import { validarPaso1, validarPaso2, validarPaso3, validarPaso4 } from './validacion'
+import { validarPaso1, validarPaso2, validarPaso3, validarPaso4, validarPasoDeudoresGarantes } from './validacion'
 import PasoIndicador from './components/PasoIndicador'
 import Paso1Titular from './components/Paso1Titular'
 import Paso2Vehiculo from './components/Paso2Vehiculo'
 import Paso3Financiera from './components/Paso3Financiera'
+import Paso4DeudoresGarantes from './components/Paso4DeudoresGarantes'
+// Nombres de archivo heredados de cuando el wizard tenía 5 pasos: Contrato y
+// Revisión ahora se muestran en los pasos 5 y 6 (se corrió uno para insertar
+// Deudores/Garantes), no en el 4 que indica su nombre.
 import Paso4Contrato from './components/Paso4Contrato'
 import Paso5Revision from './components/Paso5Revision'
 
-const TITULOS_PASO = ['Titular/es', 'Vehículo', 'Financiera', 'Contrato', 'Revisión']
+const TITULOS_PASO = ['Titular/es', 'Vehículo', 'Financiera', 'Deudores/Garantes', 'Contrato', 'Revisión']
 
 export default function NuevaPrendaPage() {
   const pasoActual = usePrendaWizard((estado) => estado.pasoActual)
@@ -18,6 +22,9 @@ export default function NuevaPrendaPage() {
   const vehiculo = usePrendaWizard((estado) => estado.vehiculo)
   const financiera = usePrendaWizard((estado) => estado.financiera)
   const contrato = usePrendaWizard((estado) => estado.contrato)
+  const tieneDeudoresOGarantes = usePrendaWizard((estado) => estado.tieneDeudoresOGarantes)
+  const deudoresSolidarios = usePrendaWizard((estado) => estado.deudoresSolidarios)
+  const garante = usePrendaWizard((estado) => estado.garante)
   const siguiente = usePrendaWizard((estado) => estado.siguiente)
   const anterior = usePrendaWizard((estado) => estado.anterior)
 
@@ -36,6 +43,13 @@ export default function NuevaPrendaPage() {
       case 3:
         return validarPaso3(financiera).valido
       case 4:
+        return validarPasoDeudoresGarantes(
+          tieneDeudoresOGarantes,
+          deudoresSolidarios,
+          garante,
+          financiera.tipoPrenda
+        ).valido
+      case 5:
         return validarPaso4(contrato, vehiculo).valido
       default:
         return true
@@ -60,10 +74,11 @@ export default function NuevaPrendaPage() {
         {pasoActual === 1 && <Paso1Titular mostrarErrores={mostrarErrores} />}
         {pasoActual === 2 && <Paso2Vehiculo mostrarErrores={mostrarErrores} />}
         {pasoActual === 3 && <Paso3Financiera mostrarErrores={mostrarErrores} />}
-        {pasoActual === 4 && <Paso4Contrato mostrarErrores={mostrarErrores} />}
-        {pasoActual === 5 && <Paso5Revision onVolverAEditar={anterior} />}
+        {pasoActual === 4 && <Paso4DeudoresGarantes mostrarErrores={mostrarErrores} />}
+        {pasoActual === 5 && <Paso4Contrato mostrarErrores={mostrarErrores} />}
+        {pasoActual === 6 && <Paso5Revision onVolverAEditar={anterior} />}
 
-        {pasoActual < 5 && (
+        {pasoActual < 6 && (
           <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-6">
             <button
               type="button"

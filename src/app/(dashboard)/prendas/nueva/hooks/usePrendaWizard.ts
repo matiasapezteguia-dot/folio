@@ -1,8 +1,17 @@
 import { create } from 'zustand'
-import type { ApoderadoWizard, ContratoWizard, FinancieraWizard, TitularWizard, VehiculoWizard } from '@/types'
+import type {
+  ApoderadoWizard,
+  ContratoWizard,
+  FinancieraWizard,
+  GaranteWizard,
+  PrendaDeudorSolidarioWizard,
+  TitularWizard,
+  VehiculoWizard,
+} from '@/types'
 
 const MAX_TITULARES = 4
-const TOTAL_PASOS = 5
+export const MAX_DEUDORES_SOLIDARIOS = 4
+const TOTAL_PASOS = 6
 
 export function crearApoderadoVacio(): ApoderadoWizard {
   return {
@@ -23,7 +32,7 @@ function crearTitularVacio(): TitularWizard {
     apellido: '',
     nacionalidad: '',
     edad: '',
-    estadoCivil: '',
+    estadoCivil: 'soltero',
     conyuge: '',
     telefono: '',
     email: '',
@@ -60,10 +69,31 @@ function vehiculoInicial(): VehiculoWizard {
     numeroMotor: '',
     marcaChasis: '',
     numeroChasis: '',
-    condicion: '',
-    uso: '',
+    condicion: '0km',
+    uso: 'particular',
     patente: '',
     color: '',
+  }
+}
+
+function crearDeudorSolidarioVacio(): PrendaDeudorSolidarioWizard {
+  return {
+    id: crypto.randomUUID(),
+    apellido: '',
+    nombre: '',
+    estadoCivil: '',
+    profesion: '',
+    nacionalidad: '',
+    edad: '',
+    fechaNacimiento: '',
+    tipoDocumento: '',
+    numeroDocumento: '',
+    calle: '',
+    numero: '',
+    piso: '',
+    depto: '',
+    localidad: '',
+    cp: '',
   }
 }
 
@@ -79,7 +109,7 @@ function financieraInicial(): FinancieraWizard {
 function contratoInicial(): ContratoWizard {
   return {
     monto: '',
-    cantidadCuotas: '',
+    cantidadCuotas: '18',
     importeCuota: '',
     fechaPrimeraCuota: '',
     lugarPago: 'Domicilio del Acreedor',
@@ -91,6 +121,7 @@ function contratoInicial(): ContratoWizard {
     seguro: { enTramite: true, compania: '', poliza: '' },
     privilegiosPreexistentes: 'ninguno',
     privilegiosTexto: '',
+    concepto: 'saldo_precio',
   }
 }
 
@@ -100,6 +131,11 @@ interface EstadoPrendaWizard {
   vehiculo: VehiculoWizard
   financiera: FinancieraWizard
   contrato: ContratoWizard
+  // Deudores solidarios/garante: opcional, oculto por defecto en la UI
+  // (checkbox "¿hay deudores solidarios o garantes?").
+  tieneDeudoresOGarantes: boolean
+  deudoresSolidarios: PrendaDeudorSolidarioWizard[]
+  garante?: GaranteWizard
 
   siguiente: () => void
   anterior: () => void
@@ -112,6 +148,13 @@ interface EstadoPrendaWizard {
   actualizarVehiculo: (cambios: Partial<VehiculoWizard>) => void
   actualizarFinanciera: (cambios: Partial<FinancieraWizard>) => void
   actualizarContrato: (cambios: Partial<ContratoWizard>) => void
+
+  setTieneDeudoresOGarantes: (valor: boolean) => void
+  agregarDeudorSolidario: () => void
+  quitarDeudorSolidario: (id: string) => void
+  actualizarDeudorSolidario: (id: string, cambios: Partial<PrendaDeudorSolidarioWizard>) => void
+  establecerGarante: (garante: GaranteWizard | undefined) => void
+  actualizarGarante: (cambios: Partial<GaranteWizard>) => void
 }
 
 export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
@@ -120,6 +163,9 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
   vehiculo: vehiculoInicial(),
   financiera: financieraInicial(),
   contrato: contratoInicial(),
+  tieneDeudoresOGarantes: false,
+  deudoresSolidarios: [],
+  garante: undefined,
 
   siguiente: () => set((estado) => ({ pasoActual: Math.min(estado.pasoActual + 1, TOTAL_PASOS) })),
   anterior: () => set((estado) => ({ pasoActual: Math.max(estado.pasoActual - 1, 1) })),
@@ -131,6 +177,9 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
       vehiculo: vehiculoInicial(),
       financiera: financieraInicial(),
       contrato: contratoInicial(),
+      tieneDeudoresOGarantes: false,
+      deudoresSolidarios: [],
+      garante: undefined,
     }),
 
   agregarTitular: () =>
@@ -160,4 +209,29 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
 
   actualizarContrato: (cambios) =>
     set((estado) => ({ contrato: { ...estado.contrato, ...cambios } })),
+
+  setTieneDeudoresOGarantes: (valor) => set({ tieneDeudoresOGarantes: valor }),
+
+  agregarDeudorSolidario: () =>
+    set((estado) => {
+      if (estado.deudoresSolidarios.length >= MAX_DEUDORES_SOLIDARIOS) return estado
+      return { deudoresSolidarios: [...estado.deudoresSolidarios, crearDeudorSolidarioVacio()] }
+    }),
+
+  quitarDeudorSolidario: (id) =>
+    set((estado) => ({
+      deudoresSolidarios: estado.deudoresSolidarios.filter((deudor) => deudor.id !== id),
+    })),
+
+  actualizarDeudorSolidario: (id, cambios) =>
+    set((estado) => ({
+      deudoresSolidarios: estado.deudoresSolidarios.map((deudor) =>
+        deudor.id === id ? { ...deudor, ...cambios } : deudor
+      ),
+    })),
+
+  establecerGarante: (garante) => set({ garante }),
+
+  actualizarGarante: (cambios) =>
+    set((estado) => ({ garante: { ...(estado.garante ?? { nombre: '', dni: '', domicilio: '' }), ...cambios } })),
 }))

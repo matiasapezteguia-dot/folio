@@ -3,6 +3,9 @@ import type {
   ClasePrenda,
   ContratoWizard,
   FinancieraWizard,
+  GaranteWizard,
+  PrendaDeudorSolidarioWizard,
+  TipoPrenda,
   TitularWizard,
   VehiculoWizard,
 } from '@/types'
@@ -125,6 +128,7 @@ export interface ErroresVehiculo {
   condicion?: string
   uso?: string
   color?: string
+  patente?: string
 }
 
 export interface ValidacionPaso2 {
@@ -150,6 +154,9 @@ export function validarPaso2(vehiculo: VehiculoWizard, clase: ClasePrenda | ''):
   if (!vehiculo.numeroChasis.trim()) errores.numeroChasis = 'Ingresá el número de chasis'
   if (!vehiculo.condicion) errores.condicion = 'Seleccioná la condición'
   if (!vehiculo.uso) errores.uso = 'Seleccioná el uso'
+  if (vehiculo.condicion === 'usado' && !vehiculo.patente.trim()) {
+    errores.patente = 'Ingresá el dominio/patente'
+  }
   if (requiereColor(vehiculo.condicion, clase) && !vehiculo.color.trim()) {
     errores.color = 'El color es obligatorio en prenda flotante sobre 0km (DNTR)'
   }
@@ -176,6 +183,102 @@ export function validarPaso3(financiera: FinancieraWizard): ValidacionPaso3 {
   return { valido: Object.keys(errores).length === 0, errores }
 }
 
+export interface ErroresDeudorSolidario {
+  apellido?: string
+  nombre?: string
+  estadoCivil?: string
+  profesion?: string
+  nacionalidad?: string
+  edad?: string
+  fechaNacimiento?: string
+  tipoDocumento?: string
+  numeroDocumento?: string
+  calle?: string
+  numero?: string
+  localidad?: string
+  cp?: string
+}
+
+// Plan de Ahorro (deudor solidario) usa edad; Compañía Financiera (codeudor)
+// usa fecha de nacimiento real — ver contrato_fca_plan_ahorro_pag2.ts
+// (EdadDS1..4) y contrato_fca_cia_financiera_pag2.ts (FechaNacCodeudor).
+export function validarDeudorSolidario(
+  deudor: PrendaDeudorSolidarioWizard,
+  tipoPrenda: TipoPrenda | ''
+): ErroresDeudorSolidario {
+  const errores: ErroresDeudorSolidario = {}
+
+  if (!deudor.apellido.trim()) errores.apellido = 'Ingresá el apellido'
+  if (!deudor.nombre.trim()) errores.nombre = 'Ingresá el nombre'
+  if (!deudor.estadoCivil) errores.estadoCivil = 'Seleccioná el estado civil'
+  if (!deudor.profesion.trim()) errores.profesion = 'Ingresá la profesión'
+  if (!deudor.nacionalidad.trim()) errores.nacionalidad = 'Ingresá la nacionalidad'
+
+  if (tipoPrenda === 'compania_financiera') {
+    if (!deudor.fechaNacimiento) errores.fechaNacimiento = 'Ingresá la fecha de nacimiento'
+  } else if (!deudor.edad.trim()) {
+    errores.edad = 'Ingresá la edad'
+  }
+
+  if (!deudor.tipoDocumento) errores.tipoDocumento = 'Seleccioná el tipo de documento'
+  if (!deudor.numeroDocumento.trim()) errores.numeroDocumento = 'Ingresá el número de documento'
+  if (!deudor.calle.trim()) errores.calle = 'Ingresá la calle'
+  if (!deudor.numero.trim()) errores.numero = 'Ingresá el número'
+  if (!deudor.localidad.trim()) errores.localidad = 'Ingresá la localidad'
+  if (!deudor.cp.trim()) errores.cp = 'Ingresá el código postal'
+
+  return errores
+}
+
+export interface ErroresGarante {
+  nombre?: string
+  dni?: string
+  domicilio?: string
+}
+
+export function validarGarante(garante: GaranteWizard): ErroresGarante {
+  const errores: ErroresGarante = {}
+
+  if (!garante.nombre.trim()) errores.nombre = 'Ingresá el nombre'
+  if (!garante.dni.trim()) errores.dni = 'Ingresá el DNI'
+  if (!garante.domicilio.trim()) errores.domicilio = 'Ingresá el domicilio'
+
+  return errores
+}
+
+export interface ValidacionPasoDeudoresGarantes {
+  valido: boolean
+  erroresPorDeudor: ErroresDeudorSolidario[]
+  errorGarante?: ErroresGarante
+}
+
+// Sección opcional del wizard (checkbox "¿hay deudores solidarios o
+// garantes?"): si está desmarcada, no hay nada que validar. La restricción
+// de "Compañía Financiera admite un solo codeudor calibrado" es una
+// advertencia de UI, no bloquea el avance — no se valida acá a propósito.
+export function validarPasoDeudoresGarantes(
+  tieneDeudoresOGarantes: boolean,
+  deudoresSolidarios: PrendaDeudorSolidarioWizard[],
+  garante: GaranteWizard | undefined,
+  tipoPrenda: TipoPrenda | ''
+): ValidacionPasoDeudoresGarantes {
+  if (!tieneDeudoresOGarantes) {
+    return { valido: true, erroresPorDeudor: [] }
+  }
+
+  const erroresPorDeudor = deudoresSolidarios.map((deudor) => validarDeudorSolidario(deudor, tipoPrenda))
+  const errorGarante = garante ? validarGarante(garante) : undefined
+
+  const hayErroresDeudores = erroresPorDeudor.some((errores) => Object.keys(errores).length > 0)
+  const hayErrorGarante = errorGarante !== undefined && Object.keys(errorGarante).length > 0
+
+  return {
+    valido: !hayErroresDeudores && !hayErrorGarante,
+    erroresPorDeudor,
+    errorGarante: hayErrorGarante ? errorGarante : undefined,
+  }
+}
+
 export interface ErroresContrato {
   monto?: string
   cantidadCuotas?: string
@@ -185,6 +288,7 @@ export interface ErroresContrato {
   cotizacionBna?: string
   privilegiosTexto?: string
   vehiculoColor?: string
+  concepto?: string
 }
 
 export interface ValidacionPaso4 {
@@ -195,6 +299,7 @@ export interface ValidacionPaso4 {
 export function validarPaso4(contrato: ContratoWizard, vehiculo: VehiculoWizard): ValidacionPaso4 {
   const errores: ErroresContrato = {}
 
+  if (!contrato.concepto) errores.concepto = 'Seleccioná el concepto'
   if (!(Number(contrato.monto) > 0)) errores.monto = 'Ingresá el monto'
   if (!(Number(contrato.cantidadCuotas) > 0)) errores.cantidadCuotas = 'Ingresá la cantidad de cuotas'
   if (!(Number(contrato.importeCuota) > 0)) errores.importeCuota = 'Ingresá el importe por cuota'

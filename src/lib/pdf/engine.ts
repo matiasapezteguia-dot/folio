@@ -49,3 +49,22 @@ export async function generarPDF(
 
   return pdfDoc.save()
 }
+
+// Concatena varios PDFs ya generados en un único documento, en el orden
+// dado. Agnóstico de dominio: no sabe qué representa cada PDF ni por qué se
+// combinan — eso lo decide quien lo llama (services/), por ejemplo para
+// separar "contrato" de "hojas de continuación" cuando el régimen de
+// copias exigido por el DNTR difiere entre ambos documentos.
+export async function combinarPDFs(pdfs: Uint8Array[]): Promise<Uint8Array> {
+  const combinado = await PDFDocument.create()
+
+  for (const pdfBytes of pdfs) {
+    const origen = await PDFDocument.load(pdfBytes)
+    const paginasCopiadas = await combinado.copyPages(origen, origen.getPageIndices())
+    for (const pagina of paginasCopiadas) {
+      combinado.addPage(pagina)
+    }
+  }
+
+  return combinado.save()
+}
