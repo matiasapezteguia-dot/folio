@@ -91,6 +91,18 @@ export interface GaranteParaImprimir {
   domicilio?: string
 }
 
+// Domicilio constituido en la Ciudad de Buenos Aires (contrato_hoja_cont2.ts,
+// punto 16°) — distinto del domicilio real de cada persona. Para FCA Plan de
+// Ahorro es un dato fijo de la financiera (confirmado: siempre el mismo,
+// Lima 365 Piso 3 Dpto 3, no lo autocompleta Autoforms), no un dato del
+// deudor ni calculado a partir de su domicilio real.
+export interface DomicilioConstituido {
+  calle?: string
+  numero?: string
+  piso?: string
+  depto?: string
+}
+
 export interface PrendaParaImprimir {
   id: string
   contrato: ContratoParaImprimir
@@ -104,4 +116,6 @@ export interface PrendaParaImprimir {
   // contrato_fca_cia_financiera_pag2.ts). Orden = índice del array.
   deudoresSolidarios?: PersonaParaImprimir[]
   garante?: GaranteParaImprimir
+  // Solo Plan de Ahorro (contrato_hoja_cont2.ts, punto 16°). Ver DomicilioConstituido.
+  domicilioConstituido?: DomicilioConstituido
 }

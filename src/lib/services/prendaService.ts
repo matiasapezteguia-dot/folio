@@ -1,4 +1,4 @@
-import type { PersonaParaImprimir, PrendaParaImprimir } from '@/types/pdf'
+import type { DomicilioConstituido, PersonaParaImprimir, PrendaParaImprimir } from '@/types/pdf'
 import type { PrendaDeudorSolidarioWizard, PrendaWizardPayload } from '@/types'
 import { combinarPDFs, generarPDF } from '@/lib/pdf/engine'
 import { CONTRATO_PAG1_TAMANO_PAGINA, buildContratoPag1Fields } from '@/lib/pdf/templates/contrato_fca_plan_ahorro_pag1'
@@ -30,6 +30,23 @@ import {
   HOJA_CONT_CIA_FINANCIERA_4_TAMANO_PAGINA,
   buildHojaContCiaFinanciera4Fields,
 } from '@/lib/pdf/templates/contrato_fca_cia_financiera_hoja_cont4'
+
+// Domicilio constituido fijo para trámites de FCA Plan de Ahorro.
+// Confirmado por Mercedes (gestora, pilot user): este valor se usa siempre
+// igual en todos los trámites de FCA Plan de Ahorro, independientemente
+// del deudor. Origen probable: domicilio de FCA S.A. o del apoderado
+// Carlos della Paolera - sin confirmar cuál de los dos exactamente.
+// Autoforms NO autocompleta este dato (no hay lógica automática detrás);
+// es un valor fijo conocido por el gestor y cargado manualmente.
+// TODO: migrar a tabla template_acreedor (roadmap punto 8) cuando esté
+// esa integración - este dato encaja naturalmente ahí junto con otros
+// datos fijos por financiera/tipo de prenda (ej. leyenda de Cía Financiera).
+const DOMICILIO_CONSTITUIDO_FCA_PLAN_AHORRO: DomicilioConstituido = {
+  calle: 'Lima',
+  numero: '365',
+  piso: '3',
+  depto: '3',
+}
 
 // TODO: reemplazar por consulta a Supabase (prenda + contrato + deudores +
 // acreedor_prendario + especificacion_vehiculo) una vez definido el mapeo
@@ -190,6 +207,8 @@ export function mapWizardAPrendaParaImprimir(wizard: PrendaWizardPayload): Prend
           domicilio: garante.domicilio || undefined,
         }
       : undefined,
+    domicilioConstituido:
+      financiera.tipoPrenda === 'plan_ahorro' ? DOMICILIO_CONSTITUIDO_FCA_PLAN_AHORRO : undefined,
   }
 }
 
@@ -219,11 +238,6 @@ function tieneDeudorSolidario(prenda: PrendaParaImprimir): boolean {
   return (prenda.deudoresSolidarios?.length ?? 0) > 0
 }
 
-// Garante (solo Plan de Ahorro — contrato_hoja_cont2.ts).
-function tieneGarante(prenda: PrendaParaImprimir): boolean {
-  return prenda.garante !== undefined
-}
-
 // El DNTR exige regímenes de copias distintos para el contrato (original +
 // 1 copia no negociable) y las hojas de continuación (por duplicado) — por
 // eso se generan como dos PDFs independientes en vez de uno solo. Cada
@@ -244,15 +258,19 @@ export async function buildContratoPlanAhorroDocumento(prenda: PrendaParaImprimi
   return combinarPDFs(pdfs)
 }
 
-// Hojas de continuación Plan de Ahorro: hoja 1 (descripción del bien)
-// siempre + hoja 2 (garante) solo si hay garante + hoja 3 (asentimiento
-// conyugal) solo si corresponde.
+// Hojas de continuación Plan de Ahorro: hoja 1 (descripción del bien) y hoja
+// 2 (garante -punto 15°-, domicilios constituidos -punto 16°- y cláusulas
+// finales) siempre — son las dos caras físicas de una misma hoja de
+// continuación oficial, no una hoja "del garante" a incluir condicionalmente.
+// Cuando no hay garante real cargado, buildHojaCont2Fields ya completa el
+// punto 15° con los datos del propio deudor (comportamiento confirmado:
+// Autoforms/el operador nunca lo deja en blanco). Hoja 3 (asentimiento
+// conyugal) sí es condicional, solo si corresponde.
 export async function buildHojasContinuacionPlanAhorroDocumento(prenda: PrendaParaImprimir): Promise<Uint8Array> {
-  const pdfs = [await generarPDF(buildHojaCont1Fields(prenda), HOJA_CONT1_TAMANO_PAGINA, 1)]
-
-  if (tieneGarante(prenda)) {
-    pdfs.push(await generarPDF(buildHojaCont2Fields(prenda), HOJA_CONT2_TAMANO_PAGINA, 1))
-  }
+  const pdfs = [
+    await generarPDF(buildHojaCont1Fields(prenda), HOJA_CONT1_TAMANO_PAGINA, 1),
+    await generarPDF(buildHojaCont2Fields(prenda), HOJA_CONT2_TAMANO_PAGINA, 1),
+  ]
 
   if (requiereAsentimientoConyugal(prenda.deudores[0], prenda.modalidades?.concepto)) {
     pdfs.push(await generarPDF(buildHojaCont3Fields(prenda), HOJA_CONT3_TAMANO_PAGINA, 1))
