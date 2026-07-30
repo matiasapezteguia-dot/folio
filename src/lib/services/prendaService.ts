@@ -199,7 +199,8 @@ export function mapWizardAPrendaParaImprimir(wizard: PrendaWizardPayload): Prend
     modalidades: contrato.concepto
       ? { concepto: contrato.concepto === 'saldo_precio' ? 'saldo_precio' : 'prestamo' }
       : undefined,
-    deudoresSolidarios: deudoresSolidarios.length > 0 ? deudoresSolidarios.map(mapDeudorSolidario) : undefined,
+    deudoresSolidarios:
+      (deudoresSolidarios ?? []).length > 0 ? deudoresSolidarios.map(mapDeudorSolidario) : undefined,
     garante: garante
       ? {
           nombre: garante.nombre.toUpperCase(),

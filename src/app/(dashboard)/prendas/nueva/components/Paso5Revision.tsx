@@ -161,6 +161,8 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
   const vehiculo = usePrendaWizard((estado) => estado.vehiculo)
   const financiera = usePrendaWizard((estado) => estado.financiera)
   const contrato = usePrendaWizard((estado) => estado.contrato)
+  const deudoresSolidarios = usePrendaWizard((estado) => estado.deudoresSolidarios)
+  const garante = usePrendaWizard((estado) => estado.garante)
 
   const [cargandoId, setCargandoId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -172,7 +174,7 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
       const respuesta = await fetch(ruta, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulares, vehiculo, financiera, contrato }),
+        body: JSON.stringify({ titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante }),
       })
 
       if (!respuesta.ok) {
