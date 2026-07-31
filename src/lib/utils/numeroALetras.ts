@@ -39,12 +39,15 @@ function convertirGrupo(numero: number): string {
 
 // Convierte un monto a su expresión en letras para formularios legales,
 // ej: numeroALetras(4500000) -> "CUATRO MILLONES QUINIENTOS MIL PESOS CON 00/100"
-export function numeroALetras(monto: number): string {
+// moneda 'usd' usa DÓLAR/DÓLARES en vez de PESO/PESOS — antes quedaba
+// hardcodeado a pesos aunque el contrato fuera en USD.
+export function numeroALetras(monto: number, moneda: 'pesos' | 'usd' = 'pesos'): string {
   const entero = Math.floor(Math.abs(monto))
   const centavos = Math.round((Math.abs(monto) - entero) * 100)
   const centavosTexto = String(centavos).padStart(2, '0')
+  const [singular, plural] = moneda === 'usd' ? ['DÓLAR', 'DÓLARES'] : ['PESO', 'PESOS']
 
-  if (entero === 0) return `CERO PESOS CON ${centavosTexto}/100`
+  if (entero === 0) return `CERO ${plural} CON ${centavosTexto}/100`
 
   const millones = Math.floor(entero / 1_000_000)
   const miles = Math.floor((entero % 1_000_000) / 1000)
@@ -64,6 +67,6 @@ export function numeroALetras(monto: number): string {
     partes.push(convertirGrupo(cientos))
   }
 
-  const unidadMonetaria = entero === 1 ? 'PESO' : 'PESOS'
+  const unidadMonetaria = entero === 1 ? singular : plural
   return `${partes.join(' ')} ${unidadMonetaria} CON ${centavosTexto}/100`
 }

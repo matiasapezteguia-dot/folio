@@ -340,6 +340,23 @@ export interface Impresora extends Auditoria {
 }
 
 // ============================================
+// CAMPO_OVERRIDE — ajuste de impresión por campo
+// ============================================
+
+// Offset aditivo guardado como default de una impresora para un campo de un
+// formulario puntual (ver CampoPDF.id en src/types/pdf.ts). Modelo aditivo:
+// se suma a x/y, nunca reemplaza la coordenada base calibrada.
+export interface CampoOverride extends Auditoria {
+  id: string
+  id_usuario: string
+  id_impresora: string
+  formulario: string
+  campo_id: string
+  offset_x: number
+  offset_y: number
+}
+
+// ============================================
 // WIZARD DE CARGA DE PRENDA (estado en memoria,
 // no persistido — ver src/app/(dashboard)/prendas/nueva/)
 // ============================================

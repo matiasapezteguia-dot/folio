@@ -3,6 +3,12 @@
 // ============================================
 
 export interface CampoPDF {
+  // Identificador estable y único del campo dentro de su template (ej.
+  // "deudor_dni"), para el editor visual de ajuste de impresión
+  // (campo_override, ver src/lib/services/campoOverrideService.ts).
+  // Opcional a nivel de tipo porque hoy solo st03.ts lo completa — el resto
+  // de los templates se migra en iteraciones futuras.
+  id?: string
   texto: string
   x: number
   y: number
@@ -10,6 +16,11 @@ export interface CampoPDF {
   font?: string
   /** Página del PDF donde se dibuja (1-indexado). Por defecto 1. */
   pagina?: number
+  // Campos con el mismo valor de grupo representan un solo dato lógico
+  // partido en varias casillas por el formulario físico (ej. día/mes/año de
+  // una fecha) — el editor de ajuste de impresión los selecciona y mueve
+  // como una unidad. Sin relación con `id`: requiere `id` para funcionar.
+  grupo?: string
 }
 
 // ============================================

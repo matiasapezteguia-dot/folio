@@ -163,18 +163,25 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
   const contrato = usePrendaWizard((estado) => estado.contrato)
   const deudoresSolidarios = usePrendaWizard((estado) => estado.deudoresSolidarios)
   const garante = usePrendaWizard((estado) => estado.garante)
+  const idImpresoraSeleccionada = usePrendaWizard((estado) => estado.idImpresoraSeleccionada)
+  const offsetsImpresionPorImpresora = usePrendaWizard((estado) => estado.offsetsImpresionPorImpresora)
 
   const [cargandoId, setCargandoId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function descargarPdf(id: string, ruta: string, nombreArchivo: string) {
+  async function descargarPdf(
+    id: string,
+    ruta: string,
+    nombreArchivo: string,
+    datosExtra?: Record<string, unknown>
+  ) {
     setCargandoId(id)
     setError(null)
     try {
       const respuesta = await fetch(ruta, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante }),
+        body: JSON.stringify({ titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante, ...datosExtra }),
       })
 
       if (!respuesta.ok) {
@@ -198,7 +205,18 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
     }
   }
 
-  const manejarDescargarST03 = () => descargarPdf('st03', '/api/pdf/st03', nombreArchivoST03(vehiculo.patente))
+  // Único formulario con CampoPDF.id hoy (ver PasoAjusteImpresion.tsx) — el
+  // único que puede recibir offsets de ajuste de impresión. offsetsActivos
+  // ya trae mezclados los defaults guardados de la impresora (precargados al
+  // entrar al paso de Ajuste) más cualquier ajuste de sesión sin guardar
+  // encima — un solo objeto, sin distinguir origen.
+  const offsetsActivosST03 = idImpresoraSeleccionada
+    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada] ?? {})
+    : {}
+  const manejarDescargarST03 = () =>
+    descargarPdf('st03', '/api/pdf/st03', nombreArchivoST03(vehiculo.patente), {
+      offsets: offsetsActivosST03,
+    })
   const manejarDescargarST02 = () => descargarPdf('st02', '/api/pdf/st02', nombreArchivoST02(vehiculo.patente))
   const manejarDescargarContratoPlanAhorro = () =>
     descargarPdf(
@@ -238,6 +256,9 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
 
   const montoNumerico = Number(contrato.monto)
   const importeCuotaNumerico = Number(contrato.importeCuota)
+
+  const etiquetaMontoEnLetras = `Monto en letras (${contrato.moneda === 'usd' ? 'Dólares' : 'Pesos'})`
+  const valorMontoEnLetras = montoNumerico > 0 ? numeroALetras(montoNumerico, contrato.moneda) : undefined
 
   return (
     <div className="space-y-4">
@@ -317,10 +338,7 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
           <FilaDato etiqueta="Cotización BNA tipo vendedor" valor={contrato.cotizacionBna} />
         )}
         <FilaDato etiqueta="Monto" valor={montoNumerico > 0 ? formatMoneda(montoNumerico) : undefined} />
-        <FilaDato
-          etiqueta="Monto en letras"
-          valor={montoNumerico > 0 ? numeroALetras(montoNumerico) : undefined}
-        />
+        <FilaDato etiqueta={etiquetaMontoEnLetras} valor={valorMontoEnLetras} />
         <FilaDato etiqueta="Cantidad de cuotas" valor={contrato.cantidadCuotas} />
         <FilaDato
           etiqueta="Importe por cuota"

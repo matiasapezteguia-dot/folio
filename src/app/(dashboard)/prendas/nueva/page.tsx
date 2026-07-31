@@ -12,9 +12,18 @@ import Paso4DeudoresGarantes from './components/Paso4DeudoresGarantes'
 // Revisión ahora se muestran en los pasos 5 y 6 (se corrió uno para insertar
 // Deudores/Garantes), no en el 4 que indica su nombre.
 import Paso4Contrato from './components/Paso4Contrato'
+import PasoAjusteImpresion from './components/PasoAjusteImpresion'
 import Paso5Revision from './components/Paso5Revision'
 
-const TITULOS_PASO = ['Titular/es', 'Vehículo', 'Financiera', 'Deudores/Garantes', 'Contrato', 'Revisión']
+const TITULOS_PASO = [
+  'Titular/es',
+  'Vehículo',
+  'Financiera',
+  'Deudores/Garantes',
+  'Contrato',
+  'Ajuste de impresión',
+  'Revisión',
+]
 
 export default function NuevaPrendaPage() {
   const pasoActual = usePrendaWizard((estado) => estado.pasoActual)
@@ -51,6 +60,10 @@ export default function NuevaPrendaPage() {
         ).valido
       case 5:
         return validarPaso4(contrato, vehiculo).valido
+      case 6:
+        // Ajuste de impresión no bloquea el avance: es un ajuste opcional,
+        // no un dato requerido del trámite.
+        return true
       default:
         return true
     }
@@ -76,9 +89,10 @@ export default function NuevaPrendaPage() {
         {pasoActual === 3 && <Paso3Financiera mostrarErrores={mostrarErrores} />}
         {pasoActual === 4 && <Paso4DeudoresGarantes mostrarErrores={mostrarErrores} />}
         {pasoActual === 5 && <Paso4Contrato mostrarErrores={mostrarErrores} />}
-        {pasoActual === 6 && <Paso5Revision onVolverAEditar={anterior} />}
+        {pasoActual === 6 && <PasoAjusteImpresion />}
+        {pasoActual === 7 && <Paso5Revision onVolverAEditar={anterior} />}
 
-        {pasoActual < 6 && (
+        {pasoActual < 7 && (
           <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-6">
             <button
               type="button"

@@ -8,10 +8,17 @@ import type {
   TitularWizard,
   VehiculoWizard,
 } from '@/types'
+import type { OffsetCampo } from '@/lib/pdf/offsetsImpresion'
 
 const MAX_TITULARES = 4
 export const MAX_DEUDORES_SOLIDARIOS = 4
-const TOTAL_PASOS = 6
+const TOTAL_PASOS = 7
+
+// OffsetCampo (offsetX/offsetY, CampoPDF.id) vive en lib/pdf/offsetsImpresion.ts
+// — compartido con la generación real del PDF, ver ese archivo. Acá vive
+// solo en memoria durante el trámite actual; "Guardar como ajuste de esta
+// impresora" lo persiste en Supabase vía campoOverrideService.
+export type { OffsetCampo }
 
 export function crearApoderadoVacio(): ApoderadoWizard {
   return {
@@ -137,6 +144,19 @@ interface EstadoPrendaWizard {
   deudoresSolidarios: PrendaDeudorSolidarioWizard[]
   garante?: GaranteWizard
 
+  // Paso "ajuste-impresion" (entre Contrato y Revisión). idImpresoraSeleccionada
+  // referencia impresora.id. offsetsImpresionPorImpresora está scopeado por
+  // impresora (no un único mapa global) para que cambiar de impresora y
+  // volver no pise ajustes de sesión sin guardar de la otra. campo_id es de
+  // CampoPDF, hoy solo tiene sentido para ST-03 (único template con ids).
+  idImpresoraSeleccionada?: string
+  offsetsImpresionPorImpresora: Record<string, Record<string, OffsetCampo>>
+  // Impresoras cuyos defaults ya se cargaron desde Supabase en ESTA sesión
+  // del wizard — precargar solo pasa la primera vez que se selecciona cada
+  // impresora; volver a seleccionarla no debe recargar (perdería ajustes de
+  // sesión sin guardar).
+  impresorasConDefaultsCargados: Record<string, true>
+
   siguiente: () => void
   anterior: () => void
   setPaso: (paso: number) => void
@@ -155,6 +175,17 @@ interface EstadoPrendaWizard {
   actualizarDeudorSolidario: (id: string, cambios: Partial<PrendaDeudorSolidarioWizard>) => void
   establecerGarante: (garante: GaranteWizard | undefined) => void
   actualizarGarante: (cambios: Partial<GaranteWizard>) => void
+
+  setImpresoraSeleccionada: (id: string | undefined) => void
+  // Carga los defaults de campo_override para una impresora y la marca como
+  // "ya cargada esta sesión" en un solo paso atómico — se llama una única
+  // vez por impresora (ver guardia en PasoAjusteImpresion.tsx).
+  precargarDefaultsImpresora: (idImpresora: string, offsets: Record<string, OffsetCampo>) => void
+  // Nudge/drag de un campo puntual, dentro de los offsets de una impresora.
+  // El movimiento en grupo (multi-selección) se resuelve en el llamador
+  // iterando esta acción por cada id seleccionado — todavía no implementado
+  // (ver PasoAjusteImpresion.tsx).
+  moverCampoImpresion: (idImpresora: string, campoId: string, deltaX: number, deltaY: number) => void
 }
 
 export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
@@ -166,6 +197,9 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
   tieneDeudoresOGarantes: false,
   deudoresSolidarios: [],
   garante: undefined,
+  idImpresoraSeleccionada: undefined,
+  offsetsImpresionPorImpresora: {},
+  impresorasConDefaultsCargados: {},
 
   siguiente: () => set((estado) => ({ pasoActual: Math.min(estado.pasoActual + 1, TOTAL_PASOS) })),
   anterior: () => set((estado) => ({ pasoActual: Math.max(estado.pasoActual - 1, 1) })),
@@ -180,6 +214,9 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
       tieneDeudoresOGarantes: false,
       deudoresSolidarios: [],
       garante: undefined,
+      idImpresoraSeleccionada: undefined,
+      offsetsImpresionPorImpresora: {},
+      impresorasConDefaultsCargados: {},
     }),
 
   agregarTitular: () =>
@@ -234,4 +271,27 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
 
   actualizarGarante: (cambios) =>
     set((estado) => ({ garante: { ...(estado.garante ?? { nombre: '', dni: '', domicilio: '' }), ...cambios } })),
+
+  setImpresoraSeleccionada: (id) => set({ idImpresoraSeleccionada: id }),
+
+  precargarDefaultsImpresora: (idImpresora, offsets) =>
+    set((estado) => ({
+      offsetsImpresionPorImpresora: { ...estado.offsetsImpresionPorImpresora, [idImpresora]: offsets },
+      impresorasConDefaultsCargados: { ...estado.impresorasConDefaultsCargados, [idImpresora]: true },
+    })),
+
+  moverCampoImpresion: (idImpresora, campoId, deltaX, deltaY) =>
+    set((estado) => {
+      const offsetsImpresora = estado.offsetsImpresionPorImpresora[idImpresora] ?? {}
+      const actual = offsetsImpresora[campoId] ?? { offsetX: 0, offsetY: 0 }
+      return {
+        offsetsImpresionPorImpresora: {
+          ...estado.offsetsImpresionPorImpresora,
+          [idImpresora]: {
+            ...offsetsImpresora,
+            [campoId]: { offsetX: actual.offsetX + deltaX, offsetY: actual.offsetY + deltaY },
+          },
+        },
+      }
+    }),
 }))

@@ -39,7 +39,8 @@ export default function Paso4Contrato({ mostrarErrores }: Paso4ContratoProps) {
   const setPaso = usePrendaWizard((estado) => estado.setPaso)
 
   const montoNumerico = Number(contrato.monto)
-  const montoEnLetras = montoNumerico > 0 ? numeroALetras(montoNumerico) : ''
+  const montoEnLetras = montoNumerico > 0 ? numeroALetras(montoNumerico, contrato.moneda) : ''
+  const etiquetaMoneda = contrato.moneda === 'usd' ? 'Dólares' : 'Pesos'
   const faltaColorVehiculo = requiereColor(vehiculo.condicion, contrato.clase) && !vehiculo.color.trim()
 
   const conError = (valido: boolean) => mostrarErrores && !valido
@@ -187,7 +188,7 @@ export default function Paso4Contrato({ mostrarErrores }: Paso4ContratoProps) {
         </div>
 
         <div>
-          <label className={claseLabel}>Monto en letras</label>
+          <label className={claseLabel}>Monto en letras ({etiquetaMoneda})</label>
           <input
             type="text"
             value={montoEnLetras}
