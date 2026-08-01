@@ -5,7 +5,12 @@ import CampoCanvas, { calcularPosicionCampoPx } from './CampoCanvas'
 
 export type ModoSeleccion = 'reemplazar' | 'agregar' | 'toggle'
 
-interface CanvasST03Props {
+interface CanvasFormularioProps {
+  /** Identificador del formulario (ej. "st03", "st02") — mismo valor que la
+   *  key de campo_override.formulario. El canvas no lo usa para su propia
+   *  lógica (selección/arrastre son agnósticos del formulario); se expone
+   *  como data-attribute para depurar/testear qué formulario está montado. */
+  formulario: string
   tamanoPaginaPt: [number, number]
   pxPorPunto: number
   /** Campos con la posición final ya calculada (base + offset de sesión). */
@@ -18,21 +23,25 @@ interface CanvasST03Props {
 
 const UMBRAL_ARRASTRE_PX = 3
 
-// Página ST-03 a escala con regla en mm arriba/izquierda, inspirado en las
-// capturas de Autoforms. Un mismo gesto de mouse resuelve tres cosas:
+// Página de un formulario a escala con regla en mm arriba/izquierda,
+// inspirado en las capturas de Autoforms. Genérico: no importa nada de
+// ST-03 ni de ningún template puntual — recibe los campos ya resueltos
+// (texto real + posición final) y el tamaño de página como props. Un mismo
+// gesto de mouse resuelve tres cosas:
 //  - click en un campo: lo selecciona (reemplaza selección)
 //  - shift+click en un campo: lo agrega/saca de la selección (toggle)
 //  - arrastrar desde un campo ya seleccionado: mueve TODO el grupo
 //  - arrastrar desde el fondo: marquee-select (rectángulo); con shift agrega
 //    a la selección existente en vez de reemplazarla
-export default function CanvasST03({
+export default function CanvasFormulario({
+  formulario,
   tamanoPaginaPt,
   pxPorPunto,
   campos,
   seleccionados,
   onSeleccionarCampos,
   onMoverCampos,
-}: CanvasST03Props) {
+}: CanvasFormularioProps) {
   const [anchoPt, altoPt] = tamanoPaginaPt
   const anchoPx = anchoPt * pxPorPunto
   const altoPx = altoPt * pxPorPunto
@@ -99,8 +108,9 @@ export default function CanvasST03({
         if (rect && (rect.ancho > UMBRAL_ARRASTRE_PX || rect.alto > UMBRAL_ARRASTRE_PX)) {
           // Hit-test por un solo punto (la esquina donde arranca el texto,
           // ver calcularPosicionCampoPx), no por el bounding-box completo
-          // del campo. Para ST-03 los campos son cortos y esto alcanza,
-          // pero un campo con caja ancha puede visualmente tocar el
+          // del campo. Para formularios de una sola hoja con campos cortos
+          // (ST-03, ST-02) esto alcanza, pero un campo con caja ancha puede
+          // visualmente tocar el
           // marquee por su tramo derecho y no quedar seleccionado si el
           // rectángulo no llega a cubrir ese punto de anclaje. Revisar si
           // se migra este editor a templates con campos más anchos
@@ -163,7 +173,7 @@ export default function CanvasST03({
   }
 
   return (
-    <div className={`inline-block${arrastrando ? ' select-none' : ''}`}>
+    <div data-formulario={formulario} className={`inline-block${arrastrando ? ' select-none' : ''}`}>
       <div className="flex">
         <div style={{ width: ANCHO_REGLA_PX, height: ANCHO_REGLA_PX }} className="shrink-0 bg-gray-50" />
         <ReglaMM longitudPuntos={anchoPt} pxPorPunto={pxPorPunto} orientacion="horizontal" />

@@ -5,7 +5,7 @@ export interface PosicionCampoPx {
 
 // Posición en pantalla (esquina donde arranca el texto) de un campo, dado su
 // x/y final en puntos PDF. Se usa tanto para renderizar la caja (CampoCanvas)
-// como para el hit-test del drag-select en CanvasST03 — un solo lugar con
+// como para el hit-test del drag-select en CanvasFormulario — un solo lugar con
 // la conversión de coordenadas para no repetirla.
 export function calcularPosicionCampoPx(
   xPt: number,
@@ -37,7 +37,7 @@ interface CampoCanvasProps {
 }
 
 // Caja de un campo sobre el canvas. mousedown (no click) porque el mismo
-// gesto decide selección Y arranca el arrastre de grupo — ver CanvasST03.
+// gesto decide selección Y arranca el arrastre de grupo — ver CanvasFormulario.
 export default function CampoCanvas({
   id,
   texto,
