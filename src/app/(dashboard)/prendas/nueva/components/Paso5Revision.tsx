@@ -205,11 +205,12 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
     }
   }
 
-  // Único formulario con CampoPDF.id hoy (ver PasoAjusteImpresion.tsx) — el
-  // único que puede recibir offsets de ajuste de impresión. offsetsActivos
-  // ya trae mezclados los defaults guardados de la impresora (precargados al
-  // entrar al paso de Ajuste) más cualquier ajuste de sesión sin guardar
-  // encima — un solo objeto, sin distinguir origen.
+  // ST-03 y ST-02 son, por ahora, los únicos formularios con CampoPDF.id
+  // (ver PasoAjusteImpresion.tsx) — los únicos que pueden recibir offsets de
+  // ajuste de impresión. offsetsActivos ya trae mezclados los defaults
+  // guardados de la impresora (precargados al entrar al paso de Ajuste) más
+  // cualquier ajuste de sesión sin guardar encima — un solo objeto, sin
+  // distinguir origen.
   const offsetsActivosST03 = idImpresoraSeleccionada
     ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada] ?? {})
     : {}
@@ -217,7 +218,13 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
     descargarPdf('st03', '/api/pdf/st03', nombreArchivoST03(vehiculo.patente), {
       offsets: offsetsActivosST03,
     })
-  const manejarDescargarST02 = () => descargarPdf('st02', '/api/pdf/st02', nombreArchivoST02(vehiculo.patente))
+  const offsetsActivosST02 = idImpresoraSeleccionada
+    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada] ?? {})
+    : {}
+  const manejarDescargarST02 = () =>
+    descargarPdf('st02', '/api/pdf/st02', nombreArchivoST02(vehiculo.patente), {
+      offsets: offsetsActivosST02,
+    })
   const manejarDescargarContratoPlanAhorro = () =>
     descargarPdf(
       'contrato-plan-ahorro',
@@ -273,7 +280,10 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
               <FilaDato etiqueta="CUIT/DNI" valor={titular.cuitDni} />
               <FilaDato etiqueta="Nombre y apellido" valor={`${titular.nombre} ${titular.apellido}`} />
               <FilaDato etiqueta="Nacionalidad" valor={titular.nacionalidad} />
-              <FilaDato etiqueta="Edad" valor={titular.edad} />
+              <FilaDato
+                etiqueta="Fecha de nacimiento"
+                valor={titular.fechaNacimiento ? titular.fechaNacimiento.split('-').reverse().join('/') : undefined}
+              />
               <FilaDato etiqueta="Estado civil" valor={titular.estadoCivil} />
               {titular.estadoCivil === 'casado' && <FilaDato etiqueta="Cónyuge" valor={titular.conyuge} />}
               <FilaDato etiqueta="Profesión" valor={titular.profesion} />

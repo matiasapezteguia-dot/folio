@@ -38,7 +38,7 @@ function crearTitularVacio(): TitularWizard {
     nombre: '',
     apellido: '',
     nacionalidad: '',
-    edad: '',
+    fechaNacimiento: '',
     estadoCivil: 'soltero',
     conyuge: '',
     telefono: '',

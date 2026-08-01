@@ -382,7 +382,7 @@ export interface TitularWizard {
   nombre: string
   apellido: string
   nacionalidad: string
-  edad: string
+  fechaNacimiento: string
   estadoCivil: EstadoCivilWizard | ''
   conyuge: string
   telefono: string

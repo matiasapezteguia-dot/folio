@@ -110,6 +110,26 @@ export async function getPrendaParaImprimir(prendaId: string): Promise<PrendaPar
   }
 }
 
+// Edad en años cumplidos a una fecha de referencia, a partir de una fecha de
+// nacimiento ISO (input type="date" del wizard). PersonaParaImprimir.edad es
+// un campo derivado — el wizard ya no pide edad como texto libre (ver
+// TitularWizard.fechaNacimiento).
+function calcularEdad(fechaNacimientoIso: string, fechaReferencia: Date): number | undefined {
+  const iso = fechaNacimientoIso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!iso) return undefined
+
+  const [, anio, mes, dia] = iso
+  const nacimiento = new Date(Number(anio), Number(mes) - 1, Number(dia))
+
+  let edad = fechaReferencia.getFullYear() - nacimiento.getFullYear()
+  const aunNoCumplioAnios =
+    fechaReferencia.getMonth() < nacimiento.getMonth() ||
+    (fechaReferencia.getMonth() === nacimiento.getMonth() && fechaReferencia.getDate() < nacimiento.getDate())
+  if (aunNoCumplioAnios) edad -= 1
+
+  return edad
+}
+
 function separarCuitDni(valor: string): Pick<PersonaParaImprimir, 'cuit' | 'dni' | 'tipoDocumento'> {
   const limpio = valor.replace(/\D/g, '')
 
@@ -148,11 +168,12 @@ function mapDeudorSolidario(deudor: PrendaDeudorSolidarioWizard): PersonaParaImp
 // a la vista aplanada que consume el template ST-03. No persiste nada en Supabase.
 export function mapWizardAPrendaParaImprimir(wizard: PrendaWizardPayload): PrendaParaImprimir {
   const { titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante } = wizard
+  const hoy = new Date()
 
   return {
     id: 'wizard',
     contrato: {
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: hoy.toISOString().slice(0, 10),
       lugar: contrato.lugarPago || undefined,
       monto: Number(contrato.monto) || undefined,
       cantidadCuotas: Number(contrato.cantidadCuotas) || undefined,
@@ -170,7 +191,8 @@ export function mapWizardAPrendaParaImprimir(wizard: PrendaWizardPayload): Prend
       nombreCompleto: `${titular.apellido}, ${titular.nombre}`.toUpperCase(),
       ...separarCuitDni(titular.cuitDni),
       nacionalidad: titular.nacionalidad || undefined,
-      edad: titular.edad || undefined,
+      fechaNacimiento: titular.fechaNacimiento || undefined,
+      edad: titular.fechaNacimiento ? String(calcularEdad(titular.fechaNacimiento, hoy)) : undefined,
       profesion: titular.profesion || undefined,
       estadoCivil: titular.estadoCivil || undefined,
       conyuge: titular.estadoCivil === 'casado' ? titular.conyuge || undefined : undefined,

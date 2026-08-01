@@ -37,7 +37,7 @@ export interface ErroresTitular {
   nombre?: string
   apellido?: string
   nacionalidad?: string
-  edad?: string
+  fechaNacimiento?: string
   estadoCivil?: string
   conyuge?: string
   telefono?: string
@@ -60,7 +60,7 @@ export function validarTitular(titular: TitularWizard): ErroresTitular {
   if (!titular.nombre.trim()) errores.nombre = 'Ingresá el nombre'
   if (!titular.apellido.trim()) errores.apellido = 'Ingresá el apellido'
   if (!titular.nacionalidad.trim()) errores.nacionalidad = 'Ingresá la nacionalidad'
-  if (!titular.edad.trim()) errores.edad = 'Ingresá la edad'
+  if (!titular.fechaNacimiento) errores.fechaNacimiento = 'Ingresá la fecha de nacimiento'
   if (!titular.estadoCivil) errores.estadoCivil = 'Seleccioná el estado civil'
   if (titular.estadoCivil === 'casado' && !titular.conyuge.trim()) {
     errores.conyuge = 'Ingresá el nombre y apellido del cónyuge'

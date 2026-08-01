@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePrendaWizard, crearApoderadoVacio } from '../hooks/usePrendaWizard'
 import { validarTitular, type ErroresApoderado } from '../validacion'
 import { buscarPersonaPorCuitDni } from '@/lib/services/afipService'
 import { listarApoderadosPorPersona, type ApoderadoGuardado } from '@/lib/services/apoderadoService'
+import { obtenerContactoUsuarioActual, type ContactoUsuario } from '@/lib/services/usuarioService'
 import { claseCard, claseError, claseInput, claseLabel } from '../estilos'
 import type { EstadoCivilWizard, TipoDocumento, TipoPoder } from '@/types'
 
@@ -41,9 +42,32 @@ export default function Paso1Titular({ mostrarErrores }: Paso1TitularProps) {
 
   const [buscandoId, setBuscandoId] = useState<string | null>(null)
   const [apoderadosSugeridos, setApoderadosSugeridos] = useState<Record<string, ApoderadoGuardado[]>>({})
+  const [contactoUsuario, setContactoUsuario] = useState<ContactoUsuario | null>(null)
 
   const sumaPorcentajes = titulares.reduce((acumulado, titular) => acumulado + titular.porcentaje, 0)
   const mostrarPorcentajes = titulares.length >= 2
+
+  useEffect(() => {
+    obtenerContactoUsuarioActual().then(setContactoUsuario)
+  }, [])
+
+  // Precarga teléfono/email del gestor logueado como default editable: los
+  // documentos suelen llegar a su contacto, no al del titular real, y
+  // tipearlo a mano en cada trámite es trabajo repetido innecesario. Corre
+  // al montar y cada vez que se agrega un titular nuevo, y solo completa el
+  // último titular si sus campos siguen vacíos (no pisa lo que el gestor ya
+  // haya tipeado o borrado a propósito).
+  useEffect(() => {
+    if (!contactoUsuario) return
+    const ultimo = titulares[titulares.length - 1]
+    if (!ultimo) return
+
+    const cambios: { telefono?: string; email?: string } = {}
+    if (!ultimo.telefono && contactoUsuario.telefono) cambios.telefono = contactoUsuario.telefono
+    if (!ultimo.email && contactoUsuario.email) cambios.email = contactoUsuario.email
+    if (Object.keys(cambios).length > 0) actualizarTitular(ultimo.id, cambios)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titulares.length, contactoUsuario])
 
   async function buscarApoderadosSugeridos(id: string, cuitDni: string) {
     if (!cuitDni.trim() || apoderadosSugeridos[id]) return
@@ -106,10 +130,13 @@ export default function Paso1Titular({ mostrarErrores }: Paso1TitularProps) {
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    inputMode="numeric"
                     value={titular.cuitDni}
-                    onChange={(e) => actualizarTitular(titular.id, { cuitDni: e.target.value })}
+                    onChange={(e) =>
+                      actualizarTitular(titular.id, { cuitDni: e.target.value.replace(/\D/g, '') })
+                    }
                     className={claseInput(conError('cuitDni'))}
-                    placeholder="20-12345678-9"
+                    placeholder="20123456789"
                   />
                   <button
                     type="button"
@@ -157,15 +184,14 @@ export default function Paso1Titular({ mostrarErrores }: Paso1TitularProps) {
               </div>
 
               <div>
-                <label className={claseLabel}>Edad</label>
+                <label className={claseLabel}>Fecha de nacimiento</label>
                 <input
-                  type="number"
-                  min={0}
-                  value={titular.edad}
-                  onChange={(e) => actualizarTitular(titular.id, { edad: e.target.value })}
-                  className={claseInput(conError('edad'))}
+                  type="date"
+                  value={titular.fechaNacimiento}
+                  onChange={(e) => actualizarTitular(titular.id, { fechaNacimiento: e.target.value })}
+                  className={claseInput(conError('fechaNacimiento'))}
                 />
-                {conError('edad') && <p className={claseError}>{errores.edad}</p>}
+                {conError('fechaNacimiento') && <p className={claseError}>{errores.fechaNacimiento}</p>}
               </div>
 
               <div>
@@ -186,19 +212,6 @@ export default function Paso1Titular({ mostrarErrores }: Paso1TitularProps) {
                 </select>
                 {conError('estadoCivil') && <p className={claseError}>{errores.estadoCivil}</p>}
               </div>
-
-              {titular.estadoCivil === 'casado' && (
-                <div>
-                  <label className={claseLabel}>Nombre y apellido del cónyuge</label>
-                  <input
-                    type="text"
-                    value={titular.conyuge}
-                    onChange={(e) => actualizarTitular(titular.id, { conyuge: e.target.value })}
-                    className={claseInput(conError('conyuge'))}
-                  />
-                  {conError('conyuge') && <p className={claseError}>{errores.conyuge}</p>}
-                </div>
-              )}
 
               <div>
                 <label className={claseLabel}>Profesión</label>
@@ -276,6 +289,19 @@ export default function Paso1Titular({ mostrarErrores }: Paso1TitularProps) {
                 />
                 {conError('provincia') && <p className={claseError}>{errores.provincia}</p>}
               </div>
+
+              {titular.estadoCivil === 'casado' && (
+                <div>
+                  <label className={claseLabel}>Nombre y apellido del cónyuge</label>
+                  <input
+                    type="text"
+                    value={titular.conyuge}
+                    onChange={(e) => actualizarTitular(titular.id, { conyuge: e.target.value })}
+                    className={claseInput(conError('conyuge'))}
+                  />
+                  {conError('conyuge') && <p className={claseError}>{errores.conyuge}</p>}
+                </div>
+              )}
 
               {mostrarPorcentajes && (
                 <div>

@@ -5,7 +5,6 @@ export type DatosAfip = Pick<
   | 'nombre'
   | 'apellido'
   | 'nacionalidad'
-  | 'edad'
   | 'estadoCivil'
   | 'profesion'
   | 'calle'
@@ -29,7 +28,6 @@ export async function buscarPersonaPorCuitDni(cuitDni: string): Promise<DatosAfi
     nombre: 'Juan Carlos',
     apellido: 'Pérez',
     nacionalidad: 'Argentina',
-    edad: '42',
     estadoCivil,
     profesion: 'Comerciante',
     calle: 'Av. San Martín',
