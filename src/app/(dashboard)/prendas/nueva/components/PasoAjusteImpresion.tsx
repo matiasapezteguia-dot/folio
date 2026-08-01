@@ -3,13 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePrendaWizard, type OffsetCampo } from '../hooks/usePrendaWizard'
 import { mapWizardAPrendaParaImprimir } from '@/lib/services/prendaService'
-// TEMP(validación Etapa 2 — generalización del canvas): swap manual a ST-02
-// para confirmar en el navegador que CanvasFormulario funciona igual de bien
-// con otro template (selección, drag, marquee, nudge, zoom, guardar/precargar
-// defaults con formulario='st02' en campo_override) antes de construir el
-// selector real de documento/formulario de la próxima iteración. Revertir a
-// st03.ts (o reemplazar por el selector) una vez validado.
-import { ST02_TAMANO_PAGINA, buildST02Fields } from '@/lib/pdf/templates/st02'
+import { ST03_TAMANO_PAGINA, buildST03Fields } from '@/lib/pdf/templates/st03'
 import { listarImpresoras, crearImpresora } from '@/lib/services/impresoraService'
 import { listarOverrides, guardarOverrides } from '@/lib/services/campoOverrideService'
 import type { Impresora } from '@/types'
@@ -21,9 +15,12 @@ import SelectorImpresora from './ajusteImpresion/SelectorImpresora'
 import { mmAPuntos } from './ajusteImpresion/conversion'
 import { aplicarOffsetsImpresion } from '@/lib/pdf/offsetsImpresion'
 
-// TEMP: 'st02' mientras dura la validación de arriba — ver comentario del import.
-const FORMULARIO = 'st02'
-const [ANCHO_PAGINA_PT] = ST02_TAMANO_PAGINA
+// Solo ST-03 por ahora — único template con CampoPDF.id que ya tiene su
+// paso del wizard cableado (ST-02 también tiene ids, ver st02.ts, pero
+// todavía no hay selector de documento/formulario — queda para la próxima
+// iteración cuando se ataquen los templates multi-página).
+const FORMULARIO = 'st03'
+const [ANCHO_PAGINA_PT] = ST03_TAMANO_PAGINA
 // Techo de zoom RELATIVO a escalaFit (300% del fit-to-width vigente), no un
 // valor absoluto de px/pt — un techo absoluto (ej. 1.3) da un porcentaje
 // relativo distinto según el ancho de pantalla (132% en una prueba real con
@@ -192,7 +189,7 @@ export default function PasoAjusteImpresion() {
   // CanvasFormulario.tsx).
   const camposConPosicion = useMemo(() => {
     const prenda = mapWizardAPrendaParaImprimir({ titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante })
-    const camposBase = buildST02Fields(prenda).filter(
+    const camposBase = buildST03Fields(prenda).filter(
       (campo): campo is typeof campo & { id: string } => campo.pagina === 1 && !!campo.id
     )
     return aplicarOffsetsImpresion(camposBase, offsetsActivos)
@@ -367,7 +364,7 @@ export default function PasoAjusteImpresion() {
           >
             <CanvasFormulario
               formulario={FORMULARIO}
-              tamanoPaginaPt={ST02_TAMANO_PAGINA}
+              tamanoPaginaPt={ST03_TAMANO_PAGINA}
               pxPorPunto={escala}
               campos={camposConPosicion}
               seleccionados={seleccionados}
