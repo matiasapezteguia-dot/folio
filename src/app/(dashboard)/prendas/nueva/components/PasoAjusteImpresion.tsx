@@ -4,23 +4,41 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePrendaWizard, type OffsetCampo } from '../hooks/usePrendaWizard'
 import { mapWizardAPrendaParaImprimir } from '@/lib/services/prendaService'
 import { ST03_TAMANO_PAGINA, buildST03Fields } from '@/lib/pdf/templates/st03'
+import { ST02_TAMANO_PAGINA, buildST02Fields } from '@/lib/pdf/templates/st02'
+import { CONTRATO_PAG1_TAMANO_PAGINA, buildContratoPag1Fields } from '@/lib/pdf/templates/contrato_fca_plan_ahorro_pag1'
 import { listarImpresoras, crearImpresora } from '@/lib/services/impresoraService'
 import { listarOverrides, guardarOverrides } from '@/lib/services/campoOverrideService'
 import type { Impresora } from '@/types'
+import type { CampoPDF, PrendaParaImprimir } from '@/types/pdf'
 import { claseCard } from '../estilos'
 import CanvasFormulario, { type ModoSeleccion } from './ajusteImpresion/CanvasFormulario'
+import SelectorDocumento, { type OpcionDocumentoAjuste } from './ajusteImpresion/SelectorDocumento'
 import { ANCHO_REGLA_PX } from './ajusteImpresion/ReglaMM'
 import ControlZoom from './ajusteImpresion/ControlZoom'
 import SelectorImpresora from './ajusteImpresion/SelectorImpresora'
 import { mmAPuntos } from './ajusteImpresion/conversion'
 import { aplicarOffsetsImpresion } from '@/lib/pdf/offsetsImpresion'
 
-// Solo ST-03 por ahora — único template con CampoPDF.id que ya tiene su
-// paso del wizard cableado (ST-02 también tiene ids, ver st02.ts, pero
-// todavía no hay selector de documento/formulario — queda para la próxima
-// iteración cuando se ataquen los templates multi-página).
-const FORMULARIO = 'st03'
-const [ANCHO_PAGINA_PT] = ST03_TAMANO_PAGINA
+interface OpcionDocumento extends OpcionDocumentoAjuste {
+  tamanoPaginaPt: [number, number]
+  buildFields: (prenda: PrendaParaImprimir) => CampoPDF[]
+}
+
+// Documentos con CampoPDF.id ya habilitados para el editor, disponibles sin
+// importar el tipo de trámite. Contrato Pág. 1 se agrega condicionalmente
+// más abajo (solo Plan de Ahorro) — el resto de los documentos (Contrato
+// Pág. 2, Hojas de Continuación) todavía no tiene ids y por eso no aparece
+// acá.
+const OPCIONES_SIEMPRE: OpcionDocumento[] = [
+  { id: 'st03', etiqueta: 'ST-03', tamanoPaginaPt: ST03_TAMANO_PAGINA, buildFields: buildST03Fields },
+  { id: 'st02', etiqueta: 'ST-02', tamanoPaginaPt: ST02_TAMANO_PAGINA, buildFields: buildST02Fields },
+]
+const OPCION_CONTRATO_PAG1: OpcionDocumento = {
+  id: 'contrato-plan-ahorro-pag1',
+  etiqueta: 'Contrato (Pág. 1)',
+  tamanoPaginaPt: CONTRATO_PAG1_TAMANO_PAGINA,
+  buildFields: buildContratoPag1Fields,
+}
 // Techo de zoom RELATIVO a escalaFit (300% del fit-to-width vigente), no un
 // valor absoluto de px/pt — un techo absoluto (ej. 1.3) da un porcentaje
 // relativo distinto según el ancho de pantalla (132% en una prueba real con
@@ -56,8 +74,8 @@ function clamp(valor: number, min: number, max: number): number {
 const OFFSETS_VACIO: Record<string, OffsetCampo> = {}
 
 // Paso "ajuste-impresion" del wizard (entre Contrato y Revisión). Editor
-// visual de offsets aditivos por campo, scopeados por impresora — ver
-// scripts/referencias/campo_override.sql y CLAUDE.md.
+// visual de offsets aditivos por campo, scopeados por (impresora, documento)
+// — ver scripts/referencias/campo_override.sql y CLAUDE.md.
 //
 // Selección múltiple (click/shift-click/drag-select) y arrastre con mouse
 // viven en CanvasFormulario; acá solo se traducen a llamadas a
@@ -80,6 +98,33 @@ export default function PasoAjusteImpresion() {
   const [guardando, setGuardando] = useState(false)
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
 
+  // Documentos disponibles para el trámite actual: Contrato Pág. 1 solo
+  // aplica a Plan de Ahorro (es específico de esa financiera).
+  const opcionesDocumento = useMemo(
+    () => (financiera.tipoPrenda === 'plan_ahorro' ? [...OPCIONES_SIEMPRE, OPCION_CONTRATO_PAG1] : OPCIONES_SIEMPRE),
+    [financiera.tipoPrenda]
+  )
+  const [formularioSeleccionado, setFormularioSeleccionado] = useState<string>(OPCIONES_SIEMPRE[0].id)
+  const opcionActiva =
+    opcionesDocumento.find((opcion) => opcion.id === formularioSeleccionado) ?? opcionesDocumento[0]
+  const [anchoPaginaPt] = opcionActiva.tamanoPaginaPt
+
+  // Si el documento seleccionado deja de estar disponible (ej. el usuario
+  // cambió tipoPrenda y ya no aplica Contrato Pág. 1), cae al primero de la
+  // lista vigente en vez de quedar apuntando a un documento fantasma.
+  useEffect(() => {
+    if (opcionesDocumento.some((opcion) => opcion.id === formularioSeleccionado)) return
+    setFormularioSeleccionado(opcionesDocumento[0].id)
+  }, [opcionesDocumento, formularioSeleccionado])
+
+  // Cambiar de documento invalida la selección de campos vigente (son ids de
+  // OTRO documento) — evita arrastrar una selección "fantasma" de un campo
+  // que, por coincidencia de id entre templates, podría existir también acá.
+  function manejarSeleccionarDocumento(id: string) {
+    setFormularioSeleccionado(id)
+    setSeleccionados(new Set())
+  }
+
   const canvasRegionRef = useRef<HTMLDivElement>(null)
   const [anchoContenedorPx, setAnchoContenedorPx] = useState(0)
   // null = "seguir el fit-to-width automático"; un número = zoom manual del
@@ -100,7 +145,7 @@ export default function PasoAjusteImpresion() {
 
   const escalaFit =
     anchoContenedorPx > 0
-      ? clamp((anchoContenedorPx - ANCHO_REGLA_PX) / ANCHO_PAGINA_PT, ESCALA_MINIMA_ABSOLUTA, ESCALA_FIT_MAXIMA_ABSOLUTA)
+      ? clamp((anchoContenedorPx - ANCHO_REGLA_PX) / anchoPaginaPt, ESCALA_MINIMA_ABSOLUTA, ESCALA_FIT_MAXIMA_ABSOLUTA)
       : ESCALA_FIT_MAXIMA_ABSOLUTA
   // Techo del zoom manual, relativo al fit vigente — se recalcula solo si
   // escalaFit cambia (resize), a diferencia del viejo ESCALA_MAXIMA fijo.
@@ -145,13 +190,15 @@ export default function PasoAjusteImpresion() {
     setEscalaManual(null)
   }
 
-  // "Cargando" mientras la impresora activa todavía no tuvo sus defaults
-  // resueltos NI UNA VEZ en esta sesión del wizard (impresorasConDefaultsCargados
-  // vive en el store, no en estado local — así sobrevive a que este
-  // componente se desmonte al navegar a otro paso y se remonte al volver).
-  const cargandoDefaults = !!idImpresoraSeleccionada && !impresorasConDefaultsCargados[idImpresoraSeleccionada]
+  // "Cargando" mientras la combinación (impresora, documento) activa todavía
+  // no tuvo sus defaults resueltos NI UNA VEZ en esta sesión del wizard
+  // (impresorasConDefaultsCargados vive en el store, no en estado local —
+  // así sobrevive a que este componente se desmonte al navegar a otro paso y
+  // se remonte al volver).
+  const cargandoDefaults =
+    !!idImpresoraSeleccionada && !impresorasConDefaultsCargados[idImpresoraSeleccionada]?.[opcionActiva.id]
   const offsetsActivos = idImpresoraSeleccionada
-    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada] ?? OFFSETS_VACIO)
+    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada]?.[opcionActiva.id] ?? OFFSETS_VACIO)
     : OFFSETS_VACIO
 
   useEffect(() => {
@@ -164,24 +211,24 @@ export default function PasoAjusteImpresion() {
   }, [offsetsImpresionPorImpresora])
 
   // Precarga los defaults guardados SOLO la primera vez que se selecciona
-  // cada impresora en esta sesión (guardia: impresorasConDefaultsCargados).
-  // Volver a seleccionar una impresora ya cargada NO repite el fetch ni pisa
-  // los offsets de sesión — quedan los que ya había en
-  // offsetsImpresionPorImpresora para esa impresora.
+  // cada combinación (impresora, documento) en esta sesión (guardia:
+  // impresorasConDefaultsCargados). Volver a seleccionar una combinación ya
+  // cargada NO repite el fetch ni pisa los offsets de sesión — quedan los
+  // que ya había en offsetsImpresionPorImpresora para esa combinación.
   useEffect(() => {
     if (!idImpresoraSeleccionada) return
-    if (impresorasConDefaultsCargados[idImpresoraSeleccionada]) return
+    if (impresorasConDefaultsCargados[idImpresoraSeleccionada]?.[opcionActiva.id]) return
     let cancelado = false
 
-    listarOverrides(idImpresoraSeleccionada, FORMULARIO).then((defaults) => {
+    listarOverrides(idImpresoraSeleccionada, opcionActiva.id).then((defaults) => {
       if (cancelado) return
-      precargarDefaultsImpresora(idImpresoraSeleccionada, defaults)
+      precargarDefaultsImpresora(idImpresoraSeleccionada, opcionActiva.id, defaults)
     })
 
     return () => {
       cancelado = true
     }
-  }, [idImpresoraSeleccionada, impresorasConDefaultsCargados, precargarDefaultsImpresora])
+  }, [idImpresoraSeleccionada, opcionActiva.id, impresorasConDefaultsCargados, precargarDefaultsImpresora])
 
   // Memoizado: sin esto, CanvasFormulario recibiría un array nuevo en cada
   // render y su efecto de listeners de window (mousemove/mouseup) se
@@ -189,11 +236,11 @@ export default function PasoAjusteImpresion() {
   // CanvasFormulario.tsx).
   const camposConPosicion = useMemo(() => {
     const prenda = mapWizardAPrendaParaImprimir({ titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante })
-    const camposBase = buildST03Fields(prenda).filter(
+    const camposBase = opcionActiva.buildFields(prenda).filter(
       (campo): campo is typeof campo & { id: string } => campo.pagina === 1 && !!campo.id
     )
     return aplicarOffsetsImpresion(camposBase, offsetsActivos)
-  }, [titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante, offsetsActivos])
+  }, [titulares, vehiculo, financiera, contrato, deudoresSolidarios, garante, opcionActiva, offsetsActivos])
 
   // Campos con el mismo `grupo` (ej. día/mes/año de una fecha) son un solo
   // dato lógico partido en varias casillas por el formulario físico — se
@@ -248,10 +295,10 @@ export default function PasoAjusteImpresion() {
         return
       }
       for (const id of seleccionados) {
-        moverCampoImpresion(idImpresoraSeleccionada, id, deltaXpt, deltaYpt)
+        moverCampoImpresion(idImpresoraSeleccionada, opcionActiva.id, id, deltaXpt, deltaYpt)
       }
     },
-    [idImpresoraSeleccionada, seleccionados, moverCampoImpresion]
+    [idImpresoraSeleccionada, opcionActiva.id, seleccionados, moverCampoImpresion]
   )
 
   const manejarNudge = useCallback(
@@ -300,7 +347,7 @@ export default function PasoAjusteImpresion() {
     if (!idImpresoraSeleccionada) return
     setGuardando(true)
     try {
-      await guardarOverrides(idImpresoraSeleccionada, FORMULARIO, offsetsActivos)
+      await guardarOverrides(idImpresoraSeleccionada, opcionActiva.id, offsetsActivos)
     } finally {
       setGuardando(false)
     }
@@ -308,12 +355,17 @@ export default function PasoAjusteImpresion() {
 
   return (
     <div className="space-y-4">
-      <div className={claseCard}>
+      <div className={`${claseCard} space-y-4`}>
         <SelectorImpresora
           impresoras={impresoras}
           idSeleccionada={idImpresoraSeleccionada}
           onSeleccionar={setImpresoraSeleccionada}
           onCrear={manejarCrearImpresora}
+        />
+        <SelectorDocumento
+          opciones={opcionesDocumento}
+          idSeleccionado={opcionActiva.id}
+          onSeleccionar={manejarSeleccionarDocumento}
         />
       </div>
 
@@ -363,8 +415,8 @@ export default function PasoAjusteImpresion() {
             title="Doble click para volver al ajuste al ancho"
           >
             <CanvasFormulario
-              formulario={FORMULARIO}
-              tamanoPaginaPt={ST03_TAMANO_PAGINA}
+              formulario={opcionActiva.id}
+              tamanoPaginaPt={opcionActiva.tamanoPaginaPt}
               pxPorPunto={escala}
               campos={camposConPosicion}
               seleccionados={seleccionados}

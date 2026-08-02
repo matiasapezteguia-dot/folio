@@ -206,20 +206,20 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
   }
 
   // ST-03 y ST-02 son, por ahora, los únicos formularios con CampoPDF.id
-  // (ver PasoAjusteImpresion.tsx) — los únicos que pueden recibir offsets de
-  // ajuste de impresión. offsetsActivos ya trae mezclados los defaults
-  // guardados de la impresora (precargados al entrar al paso de Ajuste) más
-  // cualquier ajuste de sesión sin guardar encima — un solo objeto, sin
-  // distinguir origen.
+  // que se descargan desde acá (ver PasoAjusteImpresion.tsx) — los únicos
+  // que pueden recibir offsets de ajuste de impresión. offsetsImpresionPorImpresora
+  // está scopeado por (impresora, formulario): cada uno lee solo los offsets
+  // de SU formulario, ya mezclados (defaults guardados + ajuste de sesión
+  // sin guardar, sin distinguir origen).
   const offsetsActivosST03 = idImpresoraSeleccionada
-    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada] ?? {})
+    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada]?.st03 ?? {})
     : {}
   const manejarDescargarST03 = () =>
     descargarPdf('st03', '/api/pdf/st03', nombreArchivoST03(vehiculo.patente), {
       offsets: offsetsActivosST03,
     })
   const offsetsActivosST02 = idImpresoraSeleccionada
-    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada] ?? {})
+    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada]?.st02 ?? {})
     : {}
   const manejarDescargarST02 = () =>
     descargarPdf('st02', '/api/pdf/st02', nombreArchivoST02(vehiculo.patente), {

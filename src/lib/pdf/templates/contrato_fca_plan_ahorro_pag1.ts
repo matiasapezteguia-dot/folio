@@ -23,20 +23,23 @@ export function buildContratoPag1Fields(data: PrendaParaImprimir): CampoPDF[] {
     // Lugar y fecha de celebración — el PDF real separa "Lugar, día de mes" de
     // "año" en dos campos distintos con la misma Y.
     {
+      id: 'contrato_lugar_fecha',
       texto: contrato.lugar && dia ? `${contrato.lugar}, ${dia} de ${mesTexto}` : '',
       x: 363.48,
       y: 892.08,
       size: 9,
       pagina: 1,
+      grupo: 'contrato_fecha',
     },
-    { texto: anio, x: 454.68, y: 892.08, size: 9, pagina: 1 },
+    { id: 'contrato_fecha_anio', texto: anio, x: 454.68, y: 892.08, size: 9, pagina: 1, grupo: 'contrato_fecha' },
 
-    { texto: vehiculo.tipo ?? '', x: 347.88, y: 784.68, size: 9, pagina: 1 },
+    { id: 'vehiculo_tipo', texto: vehiculo.tipo ?? '', x: 347.88, y: 784.68, size: 9, pagina: 1 },
 
     // Confirmado solo para 0km sin patente ("PRIVADO, modelo año:2026, dominio
     // a consignar."). El caso "usado" con patente real no tiene evidencia
     // todavía — se deja vacío en vez de adivinar el formato.
     {
+      id: 'vehiculo_uso',
       texto: formatearUso(vehiculo),
       x: 319.68,
       y: 747.48,
@@ -45,16 +48,16 @@ export function buildContratoPag1Fields(data: PrendaParaImprimir): CampoPDF[] {
     },
 
     // Domicilio real del solicitante/deudor principal
-    { texto: solicitante?.provincia ?? '', x: 208.08, y: 732.48, size: 9, pagina: 1 },
-    { texto: solicitante?.partido ?? '', x: 99.48, y: 724.08, size: 9, pagina: 1 },
-    { texto: solicitante?.localidad ?? '', x: 129.48, y: 706.08, size: 9, pagina: 1 },
-    { texto: solicitante?.calle ?? '', x: 262.68, y: 706.08, size: 9, pagina: 1 },
+    { id: 'solicitante_provincia', texto: solicitante?.provincia ?? '', x: 208.08, y: 732.48, size: 9, pagina: 1 },
+    { id: 'solicitante_partido', texto: solicitante?.partido ?? '', x: 99.48, y: 724.08, size: 9, pagina: 1 },
+    { id: 'solicitante_localidad', texto: solicitante?.localidad ?? '', x: 129.48, y: 706.08, size: 9, pagina: 1 },
+    { id: 'solicitante_calle', texto: solicitante?.calle ?? '', x: 262.68, y: 706.08, size: 9, pagina: 1 },
 
-    { texto: capitalizar(solicitante?.estadoCivil), x: 302.88, y: 503.28, size: 9, pagina: 1 },
-    { texto: solicitante?.profesion ?? '', x: 386.28, y: 503.28, size: 9, pagina: 1 },
-    { texto: solicitante?.nacionalidad ?? '', x: 310.08, y: 494.28, size: 9, pagina: 1 },
-    { texto: solicitante?.dni ? `D.N.I.: ${solicitante.dni}` : '', x: 347.88, y: 469.68, size: 9, pagina: 1 },
-    { texto: solicitante?.cuit ? `CUIT/CUIL: ${solicitante.cuit}` : '', x: 262.68, y: 455.28, size: 9, pagina: 1 },
+    { id: 'solicitante_estado_civil', texto: capitalizar(solicitante?.estadoCivil), x: 302.88, y: 503.28, size: 9, pagina: 1 },
+    { id: 'solicitante_profesion', texto: solicitante?.profesion ?? '', x: 386.28, y: 503.28, size: 9, pagina: 1 },
+    { id: 'solicitante_nacionalidad', texto: solicitante?.nacionalidad ?? '', x: 310.08, y: 494.28, size: 9, pagina: 1 },
+    { id: 'solicitante_dni', texto: solicitante?.dni ? `D.N.I.: ${solicitante.dni}` : '', x: 347.88, y: 469.68, size: 9, pagina: 1 },
+    { id: 'solicitante_cuit', texto: solicitante?.cuit ? `CUIT/CUIL: ${solicitante.cuit}` : '', x: 262.68, y: 455.28, size: 9, pagina: 1 },
 
     // Sin evidencia real todavía (posición conocida por el PDF de campos):
     // { texto: '', x: 276.48, y: 724.08, size: 9, pagina: 1 }, // Cuartel
