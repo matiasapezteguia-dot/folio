@@ -22,7 +22,7 @@ export async function buscarPersonaPorCuitDni(cuitDni: string): Promise<DatosAfi
   const limpio = cuitDni.replace(/\D/g, '')
   if (!limpio) return null
 
-  const estadoCivil: EstadoCivilWizard = 'casado'
+  const estadoCivil: EstadoCivilWizard = 'soltero'
 
   return {
     nombre: 'Juan Carlos',
