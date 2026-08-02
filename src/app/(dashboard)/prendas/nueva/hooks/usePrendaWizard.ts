@@ -119,6 +119,7 @@ function contratoInicial(): ContratoWizard {
     cantidadCuotas: '18',
     importeCuota: '',
     fechaPrimeraCuota: '',
+    lugarCelebracion: '',
     lugarPago: 'Domicilio del Acreedor',
     tasaMoraAnual: '27',
     tea: '',

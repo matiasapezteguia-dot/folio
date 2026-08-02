@@ -472,6 +472,10 @@ export interface ContratoWizard {
   cantidadCuotas: string
   importeCuota: string
   fechaPrimeraCuota: string
+  // Dónde se firma/celebra el contrato (ej. "Tandil") — dato real que varía
+  // por trámite, distinto de lugarPago (cláusula legal de dónde se pagan
+  // las cuotas, con default estándar).
+  lugarCelebracion: string
   lugarPago: string
   tasaMoraAnual: string
   tea: string

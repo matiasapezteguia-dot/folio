@@ -244,6 +244,19 @@ export default function Paso4Contrato({ mostrarErrores }: Paso4ContratoProps) {
         </div>
 
         <div>
+          <label className={claseLabel}>Lugar de celebración del contrato</label>
+          <input
+            type="text"
+            value={contrato.lugarCelebracion}
+            onChange={(e) => actualizarContrato({ lugarCelebracion: e.target.value })}
+            className={claseInput(conError(Boolean(contrato.lugarCelebracion.trim())))}
+          />
+          {conError(Boolean(contrato.lugarCelebracion.trim())) && (
+            <p className={claseError}>Ingresá el lugar de celebración del contrato</p>
+          )}
+        </div>
+
+        <div>
           <label className={claseLabel}>Lugar de pago</label>
           <input
             type="text"

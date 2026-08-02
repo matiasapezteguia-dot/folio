@@ -175,7 +175,7 @@ export function mapWizardAPrendaParaImprimir(wizard: PrendaWizardPayload): Prend
     id: 'wizard',
     contrato: {
       fecha: hoy.toISOString().slice(0, 10),
-      lugar: contrato.lugarPago || undefined,
+      lugar: contrato.lugarCelebracion || undefined,
       monto: Number(contrato.monto) || undefined,
       cantidadCuotas: Number(contrato.cantidadCuotas) || undefined,
       importeCuota: Number(contrato.importeCuota) || undefined,

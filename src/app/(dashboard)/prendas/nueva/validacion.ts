@@ -284,6 +284,7 @@ export interface ErroresContrato {
   cantidadCuotas?: string
   importeCuota?: string
   fechaPrimeraCuota?: string
+  lugarCelebracion?: string
   lugarPago?: string
   cotizacionBna?: string
   privilegiosTexto?: string
@@ -304,6 +305,7 @@ export function validarPaso4(contrato: ContratoWizard, vehiculo: VehiculoWizard)
   if (!(Number(contrato.cantidadCuotas) > 0)) errores.cantidadCuotas = 'Ingresá la cantidad de cuotas'
   if (!(Number(contrato.importeCuota) > 0)) errores.importeCuota = 'Ingresá el importe por cuota'
   if (!contrato.fechaPrimeraCuota) errores.fechaPrimeraCuota = 'Ingresá la fecha de la primera cuota'
+  if (!contrato.lugarCelebracion.trim()) errores.lugarCelebracion = 'Ingresá el lugar de celebración del contrato'
   if (!contrato.lugarPago.trim()) errores.lugarPago = 'Ingresá el lugar de pago'
   if (contrato.moneda === 'usd' && !contrato.cotizacionBna.trim()) {
     errores.cotizacionBna = 'Ingresá la cotización BNA tipo vendedor'
