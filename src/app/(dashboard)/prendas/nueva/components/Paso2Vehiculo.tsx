@@ -5,12 +5,20 @@ import { usePrendaWizard } from '../hooks/usePrendaWizard'
 import { requiereColor } from '../validacion'
 import { claseCard, claseError, claseInput, claseLabel } from '../estilos'
 import {
+  buscarModelosPorNombre,
   listarMarcasVehiculo,
   listarModelosPorMarca,
   listarTiposPorModelo,
+  type ModeloVehiculoConMarca,
 } from '@/lib/services/vehiculoService'
 import ComboboxBuscable from '@/components/ComboboxBuscable'
 import type { CondicionVehiculo, MarcaVehiculo, ModeloVehiculo, ModeloVehiculoTipo, UsoVehiculo } from '@/types'
+
+// Umbral y debounce de la búsqueda inversa de modelo (sin marca todavía):
+// menos de 2 caracteres trae demasiadas coincidencias sobre ~47.000 modelos
+// para ser útil, y sin debounce cada tecla dispararía una query a Supabase.
+const UMBRAL_BUSQUEDA_MODELO = 2
+const DEBOUNCE_BUSQUEDA_MODELO_MS = 300
 
 interface Paso2VehiculoProps {
   mostrarErrores: boolean
@@ -28,6 +36,9 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
   const [tiposPorModelo, setTiposPorModelo] = useState<{ idModelo: string; lista: ModeloVehiculoTipo[] } | null>(
     null
   )
+  // Resultados de la búsqueda inversa (modelo → marca), solo relevantes
+  // mientras no haya marca seleccionada — ver efecto de abajo.
+  const [modelosReversos, setModelosReversos] = useState<ModeloVehiculoConMarca[]>([])
 
   const conError = (valor: string) => mostrarErrores && !valor.trim()
   const colorRequerido = requiereColor(vehiculo.condicion, clase)
@@ -83,6 +94,34 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
       activo = false
     }
   }, [modeloSeleccionado])
+
+  // Búsqueda inversa: solo corre cuando todavía no hay marca (si ya hay
+  // marca, el modelo se resuelve por listarModelosPorMarca de arriba, como
+  // siempre). Debounced para no pegarle a Supabase en cada tecla sobre una
+  // tabla de ~47.000 filas.
+  useEffect(() => {
+    if (vehiculo.marca.trim()) {
+      setModelosReversos([])
+      return
+    }
+    const texto = vehiculo.modelo.trim()
+    if (texto.length < UMBRAL_BUSQUEDA_MODELO) {
+      setModelosReversos([])
+      return
+    }
+
+    let activo = true
+    const idTimeout = setTimeout(() => {
+      buscarModelosPorNombre(texto).then((resultado) => {
+        if (activo) setModelosReversos(resultado)
+      })
+    }, DEBOUNCE_BUSQUEDA_MODELO_MS)
+
+    return () => {
+      activo = false
+      clearTimeout(idTimeout)
+    }
+  }, [vehiculo.marca, vehiculo.modelo])
 
   useEffect(() => {
     if (tipos.length === 1) {
@@ -152,10 +191,32 @@ export default function Paso2Vehiculo({ mostrarErrores }: Paso2VehiculoProps) {
           <label className={claseLabel}>Modelo</label>
           <ComboboxBuscable
             valor={vehiculo.modelo}
-            opciones={modelosDisponibles.map((modelo) => ({ id: modelo.id, etiqueta: modelo.nombre }))}
-            disabled={!vehiculo.marca.trim()}
+            opciones={
+              vehiculo.marca.trim()
+                ? modelosDisponibles.map((modelo) => ({ id: modelo.id, etiqueta: modelo.nombre }))
+                : modelosReversos.map((r) => ({ id: r.modelo.id, etiqueta: `${r.modelo.nombre} — ${r.marca.nombre}` }))
+            }
             onCambiar={(texto, opcion) => {
-              actualizarVehiculo({ modelo: opcion ? opcion.etiqueta : texto, tipo: '' })
+              if (!opcion) {
+                actualizarVehiculo({ modelo: texto, tipo: '' })
+                return
+              }
+              if (vehiculo.marca.trim()) {
+                actualizarVehiculo({ modelo: opcion.etiqueta, tipo: '' })
+                return
+              }
+              // Modo inverso: opcion.etiqueta es "Modelo — MARCA" (compuesta,
+              // solo para mostrar) — el nombre real de modelo y marca salen
+              // de la fila encontrada por id, no de la etiqueta.
+              const encontrado = modelosReversos.find((r) => r.modelo.id === opcion.id)
+              if (!encontrado) return
+              actualizarVehiculo({
+                marca: encontrado.marca.nombre,
+                modelo: encontrado.modelo.nombre,
+                tipo: '',
+                marcaMotor: encontrado.marca.nombre,
+                marcaChasis: encontrado.marca.nombre,
+              })
             }}
             placeholder="Escribí para buscar…"
             invalido={conError(vehiculo.modelo)}
