@@ -205,12 +205,16 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
     }
   }
 
-  // ST-03 y ST-02 son, por ahora, los únicos formularios con CampoPDF.id
-  // que se descargan desde acá (ver PasoAjusteImpresion.tsx) — los únicos
-  // que pueden recibir offsets de ajuste de impresión. offsetsImpresionPorImpresora
-  // está scopeado por (impresora, formulario): cada uno lee solo los offsets
-  // de SU formulario, ya mezclados (defaults guardados + ajuste de sesión
-  // sin guardar, sin distinguir origen).
+  // ST-03, ST-02 y Contrato Pág. 1 (Plan de Ahorro) son, por ahora, los
+  // únicos formularios con CampoPDF.id que se descargan desde acá (ver
+  // PasoAjusteImpresion.tsx) — los únicos que pueden recibir offsets de
+  // ajuste de impresión. offsetsImpresionPorImpresora está scopeado por
+  // (impresora, formulario): cada uno lee solo los offsets de SU formulario,
+  // ya mezclados (defaults guardados + ajuste de sesión sin guardar, sin
+  // distinguir origen). El formulario de Contrato Pág. 1 es
+  // 'contrato-plan-ahorro-pag1' (mismo id que usa el editor), NO
+  // 'contrato-plan-ahorro' (ese es el id del documento/botón de descarga,
+  // un espacio de nombres distinto).
   const offsetsActivosST03 = idImpresoraSeleccionada
     ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada]?.st03 ?? {})
     : {}
@@ -225,11 +229,15 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
     descargarPdf('st02', '/api/pdf/st02', nombreArchivoST02(vehiculo.patente), {
       offsets: offsetsActivosST02,
     })
+  const offsetsActivosContratoPlanAhorroPag1 = idImpresoraSeleccionada
+    ? (offsetsImpresionPorImpresora[idImpresoraSeleccionada]?.['contrato-plan-ahorro-pag1'] ?? {})
+    : {}
   const manejarDescargarContratoPlanAhorro = () =>
     descargarPdf(
       'contrato-plan-ahorro',
       '/api/pdf/contrato-plan-ahorro',
-      nombreArchivoContratoPlanAhorro(vehiculo.patente)
+      nombreArchivoContratoPlanAhorro(vehiculo.patente),
+      { offsets: offsetsActivosContratoPlanAhorroPag1 }
     )
   const manejarDescargarHojasContinuacionPlanAhorro = () =>
     descargarPdf(

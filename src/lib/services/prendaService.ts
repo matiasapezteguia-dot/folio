@@ -1,6 +1,7 @@
 import type { DomicilioConstituido, PersonaParaImprimir, PrendaParaImprimir } from '@/types/pdf'
 import type { PrendaDeudorSolidarioWizard, PrendaWizardPayload } from '@/types'
 import { combinarPDFs, generarPDF } from '@/lib/pdf/engine'
+import { aplicarOffsetsImpresion, type OffsetCampo } from '@/lib/pdf/offsetsImpresion'
 import { CONTRATO_PAG1_TAMANO_PAGINA, buildContratoPag1Fields } from '@/lib/pdf/templates/contrato_fca_plan_ahorro_pag1'
 import { CONTRATO_PAG2_TAMANO_PAGINA, buildContratoPag2Fields } from '@/lib/pdf/templates/contrato_fca_plan_ahorro_pag2'
 import { HOJA_CONT1_TAMANO_PAGINA, buildHojaCont1Fields } from '@/lib/pdf/templates/contrato_hoja_cont1'
@@ -271,8 +272,19 @@ function tieneDeudorSolidario(prenda: PrendaParaImprimir): boolean {
 
 // Contrato Plan de Ahorro: página 1 siempre + página 2 (deudores
 // solidarios) solo si hay al menos uno cargado.
-export async function buildContratoPlanAhorroDocumento(prenda: PrendaParaImprimir): Promise<Uint8Array> {
-  const pdfs = [await generarPDF(buildContratoPag1Fields(prenda), CONTRATO_PAG1_TAMANO_PAGINA, 1)]
+//
+// offsetsPag1 son los offsets de ajuste de impresión (sesión + defaults
+// guardados) de la impresora seleccionada para el formulario
+// 'contrato-plan-ahorro-pag1' (ver PasoAjusteImpresion.tsx) — mismo patrón
+// que api/pdf/st03 y api/pdf/st02. Solo página 1 tiene CampoPDF.id todavía;
+// página 2 (contrato_fca_plan_ahorro_pag2.ts) se genera sin tocar, sin
+// aplicar offsets, porque sus campos no tienen id.
+export async function buildContratoPlanAhorroDocumento(
+  prenda: PrendaParaImprimir,
+  offsetsPag1?: Record<string, OffsetCampo>
+): Promise<Uint8Array> {
+  const camposPag1 = aplicarOffsetsImpresion(buildContratoPag1Fields(prenda), offsetsPag1)
+  const pdfs = [await generarPDF(camposPag1, CONTRATO_PAG1_TAMANO_PAGINA, 1)]
 
   if (tieneDeudorSolidario(prenda)) {
     pdfs.push(await generarPDF(buildContratoPag2Fields(prenda), CONTRATO_PAG2_TAMANO_PAGINA, 1))

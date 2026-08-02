@@ -1,6 +1,15 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { buildContratoPlanAhorroDocumento, mapWizardAPrendaParaImprimir } from '@/lib/services/prendaService'
+import type { OffsetCampo } from '@/lib/pdf/offsetsImpresion'
 import type { PrendaWizardPayload } from '@/types'
+
+// offsets no es parte de PrendaWizardPayload (datos del trámite): es
+// metadata del editor de ajuste de impresión, ver PasoAjusteImpresion.tsx y
+// campo_override.sql. Solo aplica a la página 1 (único CampoPDF.id de este
+// documento) — buildContratoPlanAhorroDocumento lo resuelve internamente.
+interface PeticionPdfContratoPlanAhorro extends PrendaWizardPayload {
+  offsets?: Record<string, OffsetCampo>
+}
 
 // Genera el contrato prendario FCA Plan de Ahorro (página 1 + página 2 si
 // corresponde) a partir de los datos cargados en el wizard de nueva prenda.
@@ -10,9 +19,9 @@ import type { PrendaWizardPayload } from '@/types'
 // Todavía no persiste en Supabase.
 export async function POST(request: NextRequest) {
   try {
-    const wizard = (await request.json()) as PrendaWizardPayload
+    const { offsets, ...wizard } = (await request.json()) as PeticionPdfContratoPlanAhorro
     const prenda = mapWizardAPrendaParaImprimir(wizard)
-    const pdfGenerado = await buildContratoPlanAhorroDocumento(prenda)
+    const pdfGenerado = await buildContratoPlanAhorroDocumento(prenda, offsets)
 
     return new NextResponse(Buffer.from(pdfGenerado), {
       status: 200,
