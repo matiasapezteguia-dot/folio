@@ -5,6 +5,7 @@ import { usePrendaWizard } from '../hooks/usePrendaWizard'
 import { claseCard } from '../estilos'
 import { formatMoneda } from '@/lib/utils/formatMoneda'
 import { numeroALetras } from '@/lib/utils/numeroALetras'
+import { guardarTramite, mensajeErrorGuardarTramite } from '@/lib/services/tramiteService'
 import type { TipoPrenda } from '@/types'
 
 interface Paso5RevisionProps {
@@ -165,9 +166,26 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
   const garante = usePrendaWizard((estado) => estado.garante)
   const idImpresoraSeleccionada = usePrendaWizard((estado) => estado.idImpresoraSeleccionada)
   const offsetsImpresionPorImpresora = usePrendaWizard((estado) => estado.offsetsImpresionPorImpresora)
+  const idTramiteGuardado = usePrendaWizard((estado) => estado.idTramiteGuardado)
+  const marcarTramiteGuardado = usePrendaWizard((estado) => estado.marcarTramiteGuardado)
 
   const [cargandoId, setCargandoId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
+
+  async function manejarGuardarTramite() {
+    setGuardando(true)
+    setErrorGuardar(null)
+    try {
+      const id = await guardarTramite({ titulares, vehiculo, financiera, contrato })
+      marcarTramiteGuardado(id)
+    } catch (err) {
+      setErrorGuardar(mensajeErrorGuardarTramite(err))
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   async function descargarPdf(
     id: string,
@@ -375,6 +393,34 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
           valor={contrato.privilegiosPreexistentes === 'ninguno' ? 'Ninguno' : contrato.privilegiosTexto}
         />
       </Seccion>
+
+      <div className={`${claseCard} flex items-center justify-between gap-4`}>
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Guardar trámite</p>
+          <p className="mt-0.5 text-xs text-gray-500">
+            Persiste el trámite en la base (titulares, vehículo, financiera y contrato).
+          </p>
+          {errorGuardar && <p className="mt-1 text-xs text-red-600">{errorGuardar}</p>}
+        </div>
+        {idTramiteGuardado ? (
+          <button
+            type="button"
+            disabled
+            className="whitespace-nowrap rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700"
+          >
+            Guardado ✓
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={manejarGuardarTramite}
+            disabled={guardando}
+            className="whitespace-nowrap rounded-lg bg-[#1B4F8A] px-4 py-2 text-sm font-medium text-white hover:bg-[#163f6e] disabled:opacity-50"
+          >
+            {guardando ? 'Guardando…' : 'Guardar trámite'}
+          </button>
+        )}
+      </div>
 
       <div>
         <h3 className="mb-3 text-sm font-semibold text-gray-900">Documentos para imprimir</h3>

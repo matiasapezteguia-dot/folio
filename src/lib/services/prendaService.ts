@@ -131,7 +131,7 @@ function calcularEdad(fechaNacimientoIso: string, fechaReferencia: Date): number
   return edad
 }
 
-function separarCuitDni(valor: string): Pick<PersonaParaImprimir, 'cuit' | 'dni' | 'tipoDocumento'> {
+export function separarCuitDni(valor: string): Pick<PersonaParaImprimir, 'cuit' | 'dni' | 'tipoDocumento'> {
   const limpio = valor.replace(/\D/g, '')
 
   if (limpio.length === 11) {

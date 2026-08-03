@@ -139,6 +139,7 @@ export interface EspecificacionVehiculo extends Auditoria {
   id: string
   id_marca?: string
   id_modelo?: string
+  id_tipo?: string
   numero_certificado?: string
   anio_fabricacion?: number
   modelo_anio?: number
@@ -149,6 +150,8 @@ export interface EspecificacionVehiculo extends Auditoria {
   id_marca_motor?: string
   numero_motor?: string
   uso?: string
+  patente?: string
+  color?: string
 }
 
 // ============================================

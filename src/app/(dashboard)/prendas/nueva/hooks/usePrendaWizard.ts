@@ -145,6 +145,14 @@ interface EstadoPrendaWizard {
   deudoresSolidarios: PrendaDeudorSolidarioWizard[]
   garante?: GaranteWizard
 
+  // Id devuelto por guardar_tramite_completo tras un guardado exitoso, para
+  // Paso5Revision.tsx — guardar_tramite_completo no es idempotente (crea
+  // tramite/especificacion_vehiculo/contrato/prenda/tasas_penalidades_seguros
+  // con INSERT simple en cada llamada), así que este valor es lo que evita
+  // reintentar el guardado si el componente se remonta dentro de la misma
+  // sesión del wizard.
+  idTramiteGuardado?: string
+
   // Paso "ajuste-impresion" (entre Contrato y Revisión). idImpresoraSeleccionada
   // referencia impresora.id. offsetsImpresionPorImpresora está scopeado por
   // (impresora, formulario) — dos niveles, no un único mapa por impresora —
@@ -172,6 +180,8 @@ interface EstadoPrendaWizard {
   actualizarVehiculo: (cambios: Partial<VehiculoWizard>) => void
   actualizarFinanciera: (cambios: Partial<FinancieraWizard>) => void
   actualizarContrato: (cambios: Partial<ContratoWizard>) => void
+
+  marcarTramiteGuardado: (id: string) => void
 
   setTieneDeudoresOGarantes: (valor: boolean) => void
   agregarDeudorSolidario: () => void
@@ -207,6 +217,7 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
   tieneDeudoresOGarantes: false,
   deudoresSolidarios: [],
   garante: undefined,
+  idTramiteGuardado: undefined,
   idImpresoraSeleccionada: undefined,
   offsetsImpresionPorImpresora: {},
   impresorasConDefaultsCargados: {},
@@ -224,6 +235,7 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
       tieneDeudoresOGarantes: false,
       deudoresSolidarios: [],
       garante: undefined,
+      idTramiteGuardado: undefined,
       idImpresoraSeleccionada: undefined,
       offsetsImpresionPorImpresora: {},
       impresorasConDefaultsCargados: {},
@@ -256,6 +268,8 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
 
   actualizarContrato: (cambios) =>
     set((estado) => ({ contrato: { ...estado.contrato, ...cambios } })),
+
+  marcarTramiteGuardado: (id) => set({ idTramiteGuardado: id }),
 
   setTieneDeudoresOGarantes: (valor) => set({ tieneDeudoresOGarantes: valor }),
 
