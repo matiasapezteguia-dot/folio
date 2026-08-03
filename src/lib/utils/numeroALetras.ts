@@ -56,7 +56,21 @@ export function numeroALetras(monto: number, moneda: 'pesos' | 'usd' = 'pesos'):
   const partes: string[] = []
 
   if (millones > 0) {
-    partes.push(millones === 1 ? 'UN MILLÓN' : `${convertirGrupo(millones)} MILLONES`)
+    // convertirGrupo() solo maneja 0-999 (CENTENAS tiene 10 posiciones) — a
+    // diferencia de miles/cientos, millones no tiene techo (viene de
+    // entero / 1_000_000 sin acotar), así que para montos de mil millones o
+    // más hay que descomponerlo en miles-de-millón + resto antes de
+    // convertirlo, igual que se hace con entero más abajo.
+    const milesDeMillones = Math.floor(millones / 1000)
+    const restoMillones = millones % 1000
+    const textoMillones = [
+      milesDeMillones > 0 ? (milesDeMillones === 1 ? 'MIL' : `${convertirGrupo(milesDeMillones)} MIL`) : '',
+      restoMillones > 0 ? convertirGrupo(restoMillones) : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+
+    partes.push(millones === 1 ? 'UN MILLÓN' : `${textoMillones} MILLONES`)
   }
 
   if (miles > 0) {
