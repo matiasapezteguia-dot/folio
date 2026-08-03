@@ -75,3 +75,22 @@ export async function listarTramites(): Promise<TramiteResumen[]> {
     return []
   }
 }
+
+// Baja en cascada (tramite, especificacion_vehiculo, contrato,
+// tasas_penalidades_seguros, prenda, tramite_titular) vía el RPC
+// dar_baja_tramite_completo (scripts/referencias/dar_baja_tramite_completo.sql)
+// — persona/domicilio no se tocan, son compartidas. Mismo patrón de manejo
+// de errores que guardarTramite: nunca falla en silencio, re-lanza.
+export async function eliminarTramite(idTramite: string): Promise<void> {
+  const supabase = createClient()
+
+  try {
+    const { error } = await supabase.rpc('dar_baja_tramite_completo', { id_tramite: idTramite })
+
+    if (error) throw error
+  } catch (err) {
+    const error = err as Error
+    console.error('Error al eliminar el trámite:', error.message)
+    throw error
+  }
+}

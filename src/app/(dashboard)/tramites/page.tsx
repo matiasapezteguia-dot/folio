@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { listarTramites } from '@/lib/services/tramiteService'
+import { eliminarTramite, listarTramites } from '@/lib/services/tramiteService'
 import type { EstadoTramite, TramiteResumen } from '@/types'
 
 // Sin estilos.ts compartido fuera del wizard de prendas todavía — se replican
@@ -39,6 +39,10 @@ export default function TramitesPage() {
   const [cargando, setCargando] = useState(true)
   const [idExpandido, setIdExpandido] = useState<string | null>(null)
 
+  const [idAConfirmarBaja, setIdAConfirmarBaja] = useState<string | null>(null)
+  const [dandoBajaId, setDandoBajaId] = useState<string | null>(null)
+  const [errorBaja, setErrorBaja] = useState<string | null>(null)
+
   useEffect(() => {
     // listarTramites() ya atrapa sus propios errores y devuelve [] tanto si
     // no hay trámites como si falló la query (mismo contrato que
@@ -50,9 +54,26 @@ export default function TramitesPage() {
     })
   }, [])
 
+  async function manejarConfirmarBaja(id: string) {
+    setDandoBajaId(id)
+    setErrorBaja(null)
+    try {
+      await eliminarTramite(id)
+      setTramites((actual) => actual.filter((tramite) => tramite.id !== id))
+    } catch (err) {
+      const error = err as Error
+      setErrorBaja(error.message || 'No se pudo eliminar el trámite, intentá de nuevo.')
+    } finally {
+      setDandoBajaId(null)
+      setIdAConfirmarBaja(null)
+    }
+  }
+
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-2xl font-semibold text-gray-900">Trámites</h1>
+
+      {errorBaja && <p className="text-sm text-red-600">{errorBaja}</p>}
 
       {cargando ? (
         <p className="text-sm text-gray-500">Cargando…</p>
@@ -87,21 +108,50 @@ export default function TramitesPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIdExpandido((actual) => (actual === tramite.id ? null : tramite.id))}
-                    className="whitespace-nowrap rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    {idExpandido === tramite.id ? 'Ocultar' : 'Ver'}
-                  </button>
-                  <button type="button" disabled title="En desarrollo" className={claseBotonProximamente}>
-                    Reimprimir PDF
-                  </button>
-                  <button type="button" disabled title="En desarrollo" className={claseBotonProximamente}>
-                    Eliminar
-                  </button>
-                </div>
+                {idAConfirmarBaja === tramite.id ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-700">¿Eliminar este trámite?</span>
+                    <button
+                      type="button"
+                      onClick={() => manejarConfirmarBaja(tramite.id)}
+                      disabled={dandoBajaId === tramite.id}
+                      className="whitespace-nowrap rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {dandoBajaId === tramite.id ? 'Eliminando…' : 'Confirmar'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIdAConfirmarBaja(null)}
+                      disabled={dandoBajaId === tramite.id}
+                      className="whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIdExpandido((actual) => (actual === tramite.id ? null : tramite.id))}
+                      className="whitespace-nowrap rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      {idExpandido === tramite.id ? 'Ocultar' : 'Ver'}
+                    </button>
+                    <button type="button" disabled title="En desarrollo" className={claseBotonProximamente}>
+                      Reimprimir PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorBaja(null)
+                        setIdAConfirmarBaja(tramite.id)
+                      }}
+                      className="whitespace-nowrap rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )}
               </div>
 
               {idExpandido === tramite.id && (
