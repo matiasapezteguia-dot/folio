@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { eliminarTramite, listarTramites } from '@/lib/services/tramiteService'
 import type { EstadoTramite, TramiteResumen } from '@/types'
 
@@ -10,8 +11,7 @@ import type { EstadoTramite, TramiteResumen } from '@/types'
 const claseCard = 'rounded-xl border border-gray-200 bg-white p-5 shadow-sm'
 
 // Mismo patrón visual que el botón "Próximamente" de Paso5Revision.tsx
-// (Anexo de Cláusulas Especiales) — reimprimir PDF es el subpaso 6, baja es
-// el subpaso 4, ninguno de los dos entra en esta tarea.
+// (Anexo de Cláusulas Especiales) — reimprimir PDF es el subpaso 6.
 const claseBotonProximamente =
   'whitespace-nowrap cursor-not-allowed rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-400'
 
@@ -35,9 +35,9 @@ function formatearFecha(iso?: string): string {
 }
 
 export default function TramitesPage() {
+  const router = useRouter()
   const [tramites, setTramites] = useState<TramiteResumen[]>([])
   const [cargando, setCargando] = useState(true)
-  const [idExpandido, setIdExpandido] = useState<string | null>(null)
 
   const [idAConfirmarBaja, setIdAConfirmarBaja] = useState<string | null>(null)
   const [dandoBajaId, setDandoBajaId] = useState<string | null>(null)
@@ -132,10 +132,10 @@ export default function TramitesPage() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setIdExpandido((actual) => (actual === tramite.id ? null : tramite.id))}
+                      onClick={() => router.push(`/prendas/nueva?id=${tramite.id}`)}
                       className="whitespace-nowrap rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
-                      {idExpandido === tramite.id ? 'Ocultar' : 'Ver'}
+                      Editar
                     </button>
                     <button type="button" disabled title="En desarrollo" className={claseBotonProximamente}>
                       Reimprimir PDF
@@ -153,39 +153,6 @@ export default function TramitesPage() {
                   </div>
                 )}
               </div>
-
-              {idExpandido === tramite.id && (
-                <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1.5 border-t border-gray-100 pt-4 text-sm sm:grid-cols-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Estado</span>
-                    <span className="font-medium text-gray-900">{etiquetaPorEstado[tramite.estado]}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Fecha</span>
-                    <span className="font-medium text-gray-900">{formatearFecha(tramite.fecha_creacion)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Marca</span>
-                    <span className="font-medium text-gray-900">{tramite.marca || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Modelo</span>
-                    <span className="font-medium text-gray-900">{tramite.modelo || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Patente</span>
-                    <span className="font-medium text-gray-900">{tramite.patente || 'Sin patente'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Titular principal</span>
-                    <span className="font-medium text-gray-900">{tramite.titular_principal || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Financiera</span>
-                    <span className="font-medium text-gray-900">{tramite.acreedor || '—'}</span>
-                  </div>
-                </div>
-              )}
             </div>
           ))}
         </div>

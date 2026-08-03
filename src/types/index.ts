@@ -344,6 +344,63 @@ export interface TramiteResumen {
   acreedor?: string
 }
 
+// Un titular dentro del array jsonb de vista_tramite_detalle — cuit/dni ya
+// separados como quedaron guardados (ver separarCuitDni()/resolver_persona_humana),
+// no un cuitDni único como en TitularWizard.
+export interface TramiteDetalleTitular {
+  cuit?: string
+  dni?: string
+  tipo_documento?: string
+  apellido?: string
+  nombre?: string
+  nacionalidad?: string
+  fecha_nacimiento?: string
+  profesion?: string
+  estado_civil?: string
+  telefono?: string
+  mail?: string
+  porcentaje: number
+  orden: number
+  calle?: string
+  numero?: string
+  localidad?: string
+  provincia?: string
+}
+
+// Fila de vista_tramite_detalle (scripts/referencias/vista_tramite_detalle.sql)
+// — detalle completo de un trámite para reabrirlo en el wizard de edición.
+// A diferencia de TramiteResumen, trae TODOS los titulares activos (no solo
+// el principal).
+export interface TramiteDetalle {
+  id: string
+  estado: EstadoTramite
+  marca?: string
+  modelo?: string
+  tipo?: string
+  marca_chasis?: string
+  marca_motor?: string
+  numero_chasis?: string
+  numero_motor?: string
+  uso?: string
+  patente?: string
+  color?: string
+  titulares: TramiteDetalleTitular[] | null
+  acreedor_cuit?: string
+  acreedor_denominacion?: string
+  acreedor_calle?: string
+  acreedor_numero?: string
+  acreedor_localidad?: string
+  acreedor_provincia?: string
+  contrato_lugar?: string
+  contrato_monto?: number
+  contrato_clase?: string
+  contrato_moneda?: string
+  contrato_cantidad_cuotas?: number
+  contrato_importe_cuota?: number
+  contrato_vencimiento_primer_cuota?: string
+  tasas_tea?: number
+}
+
 // ============================================
 // IMPRESORA
 // ============================================

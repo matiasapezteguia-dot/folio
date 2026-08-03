@@ -145,13 +145,20 @@ interface EstadoPrendaWizard {
   deudoresSolidarios: PrendaDeudorSolidarioWizard[]
   garante?: GaranteWizard
 
-  // Id devuelto por guardar_tramite_completo tras un guardado exitoso, para
-  // Paso5Revision.tsx — guardar_tramite_completo no es idempotente (crea
+  // Id devuelto por guardar_tramite_completo tras un guardado exitoso, o del
+  // trámite cargado vía cargarTramiteExistente. Para Paso5Revision.tsx:
+  // guardar_tramite_completo no es idempotente (crea
   // tramite/especificacion_vehiculo/contrato/prenda/tasas_penalidades_seguros
-  // con INSERT simple en cada llamada), así que este valor es lo que evita
-  // reintentar el guardado si el componente se remonta dentro de la misma
-  // sesión del wizard.
+  // con INSERT simple en cada llamada), así que en modo alta este valor es
+  // lo que bloquea el botón tras un guardado exitoso, para no reintentar
+  // (evita duplicados) — ver esEdicion para la distinción con modo edición.
   idTramiteGuardado?: string
+  // true cuando el wizard se abrió reabriendo un trámite existente
+  // (cargarTramiteExistente), no armando uno nuevo. A diferencia del alta,
+  // en edición el botón de guardado nunca se bloquea tras un guardado
+  // exitoso: actualizar_tramite_completo es una actualización sobre la
+  // misma fila, re-guardar no duplica nada.
+  esEdicion: boolean
 
   // Paso "ajuste-impresion" (entre Contrato y Revisión). idImpresoraSeleccionada
   // referencia impresora.id. offsetsImpresionPorImpresora está scopeado por
@@ -182,6 +189,17 @@ interface EstadoPrendaWizard {
   actualizarContrato: (cambios: Partial<ContratoWizard>) => void
 
   marcarTramiteGuardado: (id: string) => void
+  // Puebla todo el store a partir de un trámite existente (mapTramiteDetalleAWizard)
+  // y marca esEdicion — usado por /prendas/nueva cuando llega con ?id=.
+  cargarTramiteExistente: (
+    id: string,
+    datos: {
+      titulares: TitularWizard[]
+      vehiculo: VehiculoWizard
+      financiera: FinancieraWizard
+      contrato: ContratoWizard
+    }
+  ) => void
 
   setTieneDeudoresOGarantes: (valor: boolean) => void
   agregarDeudorSolidario: () => void
@@ -218,6 +236,7 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
   deudoresSolidarios: [],
   garante: undefined,
   idTramiteGuardado: undefined,
+  esEdicion: false,
   idImpresoraSeleccionada: undefined,
   offsetsImpresionPorImpresora: {},
   impresorasConDefaultsCargados: {},
@@ -236,6 +255,7 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
       deudoresSolidarios: [],
       garante: undefined,
       idTramiteGuardado: undefined,
+      esEdicion: false,
       idImpresoraSeleccionada: undefined,
       offsetsImpresionPorImpresora: {},
       impresorasConDefaultsCargados: {},
@@ -270,6 +290,23 @@ export const usePrendaWizard = create<EstadoPrendaWizard>((set) => ({
     set((estado) => ({ contrato: { ...estado.contrato, ...cambios } })),
 
   marcarTramiteGuardado: (id) => set({ idTramiteGuardado: id }),
+
+  cargarTramiteExistente: (id, datos) =>
+    set({
+      pasoActual: 1,
+      titulares: datos.titulares,
+      vehiculo: datos.vehiculo,
+      financiera: datos.financiera,
+      contrato: datos.contrato,
+      tieneDeudoresOGarantes: false,
+      deudoresSolidarios: [],
+      garante: undefined,
+      idTramiteGuardado: id,
+      esEdicion: true,
+      idImpresoraSeleccionada: undefined,
+      offsetsImpresionPorImpresora: {},
+      impresorasConDefaultsCargados: {},
+    }),
 
   setTieneDeudoresOGarantes: (valor) => set({ tieneDeudoresOGarantes: valor }),
 

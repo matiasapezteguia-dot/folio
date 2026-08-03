@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePrendaWizard } from '../hooks/usePrendaWizard'
 import { claseCard } from '../estilos'
 import { formatMoneda } from '@/lib/utils/formatMoneda'
 import { numeroALetras } from '@/lib/utils/numeroALetras'
-import { guardarTramite, mensajeErrorGuardarTramite } from '@/lib/services/tramiteService'
+import { actualizarTramite, guardarTramite, mensajeErrorGuardarTramite } from '@/lib/services/tramiteService'
 import type { TipoPrenda } from '@/types'
 
 interface Paso5RevisionProps {
@@ -167,19 +167,46 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
   const idImpresoraSeleccionada = usePrendaWizard((estado) => estado.idImpresoraSeleccionada)
   const offsetsImpresionPorImpresora = usePrendaWizard((estado) => estado.offsetsImpresionPorImpresora)
   const idTramiteGuardado = usePrendaWizard((estado) => estado.idTramiteGuardado)
+  const esEdicion = usePrendaWizard((estado) => estado.esEdicion)
   const marcarTramiteGuardado = usePrendaWizard((estado) => estado.marcarTramiteGuardado)
 
   const [cargandoId, setCargandoId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
+  // Modo edición no bloquea el botón tras guardar (a diferencia del alta,
+  // que queda en "Guardado ✓" fijo) — sin esto, un guardado exitoso no daba
+  // ninguna señal de que el click funcionó. Mensaje temporal: aparece al
+  // guardar y se apaga solo a los 2,5s, o antes si se dispara otro guardado.
+  const [mostrarExitoEdicion, setMostrarExitoEdicion] = useState(false)
+  const timeoutExitoRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  useEffect(() => {
+    return () => {
+      if (timeoutExitoRef.current) clearTimeout(timeoutExitoRef.current)
+    }
+  }, [])
+
+  // En modo edición (wizard abierto vía cargarTramiteExistente) el botón
+  // llama a actualizarTramite y nunca se bloquea — actualizar_tramite_completo
+  // actualiza la misma fila, re-guardar no duplica nada. En modo alta llama
+  // a guardarTramite y se bloquea tras el primer éxito (evita duplicados:
+  // guardar_tramite_completo no es idempotente).
   async function manejarGuardarTramite() {
     setGuardando(true)
     setErrorGuardar(null)
+    setMostrarExitoEdicion(false)
+    if (timeoutExitoRef.current) clearTimeout(timeoutExitoRef.current)
+
     try {
-      const id = await guardarTramite({ titulares, vehiculo, financiera, contrato })
-      marcarTramiteGuardado(id)
+      if (esEdicion && idTramiteGuardado) {
+        await actualizarTramite(idTramiteGuardado, { titulares, vehiculo, financiera, contrato })
+        setMostrarExitoEdicion(true)
+        timeoutExitoRef.current = setTimeout(() => setMostrarExitoEdicion(false), 2500)
+      } else {
+        const id = await guardarTramite({ titulares, vehiculo, financiera, contrato })
+        marcarTramiteGuardado(id)
+      }
     } catch (err) {
       setErrorGuardar(mensajeErrorGuardarTramite(err))
     } finally {
@@ -396,13 +423,16 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
 
       <div className={`${claseCard} flex items-center justify-between gap-4`}>
         <div>
-          <p className="text-sm font-semibold text-gray-900">Guardar trámite</p>
+          <p className="text-sm font-semibold text-gray-900">
+            {esEdicion ? 'Guardar cambios' : 'Guardar trámite'}
+          </p>
           <p className="mt-0.5 text-xs text-gray-500">
             Persiste el trámite en la base (titulares, vehículo, financiera y contrato).
           </p>
           {errorGuardar && <p className="mt-1 text-xs text-red-600">{errorGuardar}</p>}
+          {mostrarExitoEdicion && <p className="mt-1 text-xs text-emerald-600">Cambios guardados ✓</p>}
         </div>
-        {idTramiteGuardado ? (
+        {idTramiteGuardado && !esEdicion ? (
           <button
             type="button"
             disabled
@@ -417,7 +447,7 @@ export default function Paso5Revision({ onVolverAEditar }: Paso5RevisionProps) {
             disabled={guardando}
             className="whitespace-nowrap rounded-lg bg-[#1B4F8A] px-4 py-2 text-sm font-medium text-white hover:bg-[#163f6e] disabled:opacity-50"
           >
-            {guardando ? 'Guardando…' : 'Guardar trámite'}
+            {guardando ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Guardar trámite'}
           </button>
         )}
       </div>

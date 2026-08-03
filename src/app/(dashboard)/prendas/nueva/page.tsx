@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { usePrendaWizard } from './hooks/usePrendaWizard'
 import { validarPaso1, validarPaso2, validarPaso3, validarPaso4, validarPasoDeudoresGarantes } from './validacion'
+import { mapTramiteDetalleAWizard, obtenerTramiteParaEditar } from '@/lib/services/tramiteService'
 import PasoIndicador from './components/PasoIndicador'
 import Paso1Titular from './components/Paso1Titular'
 import Paso2Vehiculo from './components/Paso2Vehiculo'
@@ -25,7 +27,18 @@ const TITULOS_PASO = [
   'Revisión',
 ]
 
-export default function NuevaPrendaPage() {
+function ContenidoNuevaPrenda() {
+  const searchParams = useSearchParams()
+  const idTramite = searchParams.get('id')
+
+  const cargarTramiteExistente = usePrendaWizard((estado) => estado.cargarTramiteExistente)
+
+  // Con ?id=, el wizard no se muestra hasta reconstruir el estado completo
+  // desde la base — mostrarlo antes dejaría ver un trámite vacío por un
+  // instante y después "saltar" al cargado.
+  const [cargandoTramite, setCargandoTramite] = useState(Boolean(idTramite))
+  const [errorCarga, setErrorCarga] = useState<string | null>(null)
+
   const pasoActual = usePrendaWizard((estado) => estado.pasoActual)
   const titulares = usePrendaWizard((estado) => estado.titulares)
   const vehiculo = usePrendaWizard((estado) => estado.vehiculo)
@@ -42,6 +55,42 @@ export default function NuevaPrendaPage() {
   useEffect(() => {
     setMostrarErrores(false)
   }, [pasoActual])
+
+  // mapTramiteDetalleAWizard puede tirar (financiera no identificada por
+  // CUIT) además de obtenerTramiteParaEditar devolver null (no existe/no es
+  // tuyo/de baja) — ambos casos terminan en el mismo mensaje de error no
+  // bloqueante, nunca en un wizard a medio cargar.
+  useEffect(() => {
+    if (!idTramite) return
+
+    let activo = true
+    setCargandoTramite(true)
+    setErrorCarga(null)
+
+    obtenerTramiteParaEditar(idTramite)
+      .then((detalle) => {
+        if (!activo) return
+        if (!detalle) {
+          setErrorCarga('Este trámite no existe, no te pertenece, o ya fue eliminado.')
+          return
+        }
+        const datos = mapTramiteDetalleAWizard(detalle)
+        cargarTramiteExistente(idTramite, datos)
+      })
+      .catch((err: unknown) => {
+        if (!activo) return
+        const error = err instanceof Error ? err : new Error('No se pudo cargar el trámite, intentá de nuevo.')
+        setErrorCarga(error.message)
+      })
+      .finally(() => {
+        if (activo) setCargandoTramite(false)
+      })
+
+    return () => {
+      activo = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idTramite])
 
   function esPasoActualValido(): boolean {
     switch (pasoActual) {
@@ -75,6 +124,24 @@ export default function NuevaPrendaPage() {
     } else {
       setMostrarErrores(true)
     }
+  }
+
+  if (cargandoTramite) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        <h1 className="mb-6 text-2xl font-semibold text-gray-900">Nueva prenda</h1>
+        <p className="text-sm text-gray-500">Cargando trámite…</p>
+      </div>
+    )
+  }
+
+  if (errorCarga) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-8">
+        <h1 className="mb-6 text-2xl font-semibold text-gray-900">Nueva prenda</h1>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">{errorCarga}</div>
+      </div>
+    )
   }
 
   return (
@@ -113,5 +180,19 @@ export default function NuevaPrendaPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function NuevaPrendaPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <p className="text-sm text-gray-500">Cargando…</p>
+        </div>
+      }
+    >
+      <ContenidoNuevaPrenda />
+    </Suspense>
   )
 }
