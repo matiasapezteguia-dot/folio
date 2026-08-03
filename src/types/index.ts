@@ -330,6 +330,20 @@ export interface FormularioCompleto extends Formulario {
   formulario_prenda?: FormularioPrenda
 }
 
+// Fila de vista_tramites_resumen (scripts/referencias/vista_tramites_resumen.sql)
+// — resumen de un trámite para el listado en /tramites. titular_principal es
+// el de tramite_titular.orden = 1 únicamente, no todos los titulares.
+export interface TramiteResumen {
+  id: string
+  estado: EstadoTramite
+  fecha_creacion: string
+  patente?: string
+  marca?: string
+  modelo?: string
+  titular_principal?: string
+  acreedor?: string
+}
+
 // ============================================
 // IMPRESORA
 // ============================================

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import type { PrendaWizardPayload } from '@/types'
+import type { PrendaWizardPayload, TramiteResumen } from '@/types'
 
 export type GuardarTramitePayload = Pick<PrendaWizardPayload, 'titulares' | 'vehiculo' | 'financiera' | 'contrato'>
 
@@ -51,4 +51,27 @@ export function mensajeErrorGuardarTramite(error: unknown): string {
   }
 
   return 'No se pudo guardar el trámite, intentá de nuevo.'
+}
+
+// Listado para /tramites, vía vista_tramites_resumen (scripts/referencias/
+// vista_tramites_resumen.sql). Sin paginación todavía — se agrega cuando haya
+// volumen real que lo justifique. Mismo contrato que el resto de los
+// services de listado (listarImpresoras, listarMarcasVehiculo): nunca
+// rechaza, devuelve [] si falla.
+export async function listarTramites(): Promise<TramiteResumen[]> {
+  const supabase = createClient()
+
+  try {
+    const { data, error } = await supabase
+      .from('vista_tramites_resumen')
+      .select('*')
+      .order('fecha_creacion', { ascending: false })
+
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    const error = err as Error
+    console.error('Error al listar trámites:', error.message)
+    return []
+  }
 }
